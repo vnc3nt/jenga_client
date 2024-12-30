@@ -1,0 +1,30 @@
+#chartContainer {
+    justify-self: center;
+    display: flex;
+    align-items: flex-end; /* Säulen von unten ausrichten */
+    justify-content: space-around;
+    height: 60vh; /* Gesamthöhe des Diagramms */
+    width: 60vw;
+    border: 1px solid black;
+}
+  
+.bar {
+    border: 1px solid black;
+    border-radius: 15px 15px 0 0;
+    height: 300px;
+    width: 30%;
+    background-color: rgba(0, 0, 255, 0.75);
+    
+    transition: height linear 0.5s; /* Animationsdauer */
+    -webkit-transition: height 0.5s linear; /* Für ältere WebKit-Browser */
+}
+#barPlayer2 {
+    background-color: rgba(255, 0, 0, 0.75);
+}
+  
+.times {
+    display: flex;
+    justify-content: space-around;
+    width: 60%;
+    margin: 0 auto;
+}

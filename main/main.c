@@ -1,0 +1,409 @@
+//TODO wenn Zeit abgelaufen ist
+//TODO Zertifikate sind warum auch immer ungültig
+// TODO Website bauen
+//TODO Pause-Button 3 sek gedrückt halten um esp auszuschalten
+   //TODO dann kurz drücken um zu starten (wenn an strom angeschlossen soll esp auch erst schlafen bleiben)
+#include "webserver.h"
+#include <stdio.h>
+#include <inttypes.h>
+#include "sdkconfig.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "driver/gpio.h"
+#include "esp_system.h"
+#include "esp_timer.h"
+#include "esp_random.h"
+#include <esp_log.h>
+#include <cJSON.h>
+
+
+
+// Pin Definitionen
+#define PAUSE_PIN           21
+#define HUMAN_PIN1         18
+#define MACHINE_PIN_IN1    22
+#define MACHINE_PIN_OUT1   27
+#define HUMAN_PIN2         19
+#define MACHINE_PIN_IN2    23
+#define MACHINE_PIN_OUT2   32
+#define LED1_PIN           25
+#define LED2_PIN           26
+#define PAUSE_LED_PIN      13
+#define POWER_LED_PIN      4
+
+// Timing Konstanten
+#define PULSE_DURATION           100
+#define START_ANIMATION_FACTOR   10
+#define SIGNAL_DELAY            500
+#define MAX_TIME                300000
+
+// Globale Variablen
+uint32_t max_time = MAX_TIME;
+uint32_t time_player_1 = MAX_TIME;
+uint32_t time_player_2 = MAX_TIME;
+static uint64_t last_millis = 0;
+static uint64_t signal_delay_start_time = 0;
+
+// Globale Variable für den ISR Status
+static volatile uint8_t button_event = 0;  // 0 = kein Event, 1 = Player1, 2 = Player2
+
+// Globale Variable für den Pause-Status
+static volatile uint8_t pause_event = 0;  // 0 = kein Event, 1 = Resume, 2 = Pause
+
+bool is_game_paused = false;
+bool its_player1s_turn = false;
+static bool is_in_signal_delay = false;
+static bool need_to_send_signal = false;
+
+//server
+httpd_handle_t server_handle = NULL;
+
+static void update_leds(void) {
+    gpio_set_level(LED1_PIN, its_player1s_turn);
+    gpio_set_level(LED2_PIN, !its_player1s_turn);
+}
+
+static void next_player(void) {
+    its_player1s_turn = !its_player1s_turn;
+    update_leds();
+}
+
+//SIGNAL
+static void sendSignal() {
+    if (!is_game_paused) {
+        gpio_set_level(PAUSE_LED_PIN, 0);
+        next_player();
+        if (its_player1s_turn) {
+            gpio_set_level(MACHINE_PIN_OUT1, 1);
+            vTaskDelay(pdMS_TO_TICKS(PULSE_DURATION));
+            gpio_set_level(MACHINE_PIN_OUT1, 0);
+        } else {
+            gpio_set_level(MACHINE_PIN_OUT2, 1);
+            vTaskDelay(pdMS_TO_TICKS(PULSE_DURATION));
+            gpio_set_level(MACHINE_PIN_OUT2, 0);
+        }
+        need_to_send_signal = false;
+        is_in_signal_delay = false;
+
+
+        // JSON-Nachricht erstellen
+        cJSON *json = cJSON_CreateObject();
+        cJSON_AddStringToObject(json, "action", "start_time");
+        cJSON_AddNumberToObject(json, "current_player", its_player1s_turn ? 1 : 2);
+
+        // JSON-Nachricht senden
+        if (server_handle != NULL) {
+            char *json_str = cJSON_Print(json);
+            send_json_to_clients(server_handle, json_str); // server_handle muss definiert sein
+
+            // Speicher freigeben
+            free(json_str);
+        }
+        else {
+            ESP_LOGE("main", "Server-Handle ist NULL!");
+        }
+        cJSON_Delete(json);
+    }
+} 
+
+
+static void resume_game() {
+    
+    gpio_set_level(LED1_PIN, 0);
+    gpio_set_level(LED2_PIN, 0);
+    // Pause-LED Blinkt 3x bevor es weiter geht
+    for (int i = 0; i < 6; i++)
+    {
+        
+        if (its_player1s_turn)
+        {
+            gpio_set_level(LED2_PIN, (i)%2);
+        }
+        else {
+            gpio_set_level(LED1_PIN, (i)%2);
+        }
+        
+        
+        vTaskDelay(pdMS_TO_TICKS(500));
+    }
+    
+    gpio_set_level(PAUSE_LED_PIN, 0);
+    last_millis = esp_timer_get_time() / 1000;
+    is_game_paused = false;
+    printf("GameResumed! \n");
+    sendSignal();
+}
+
+static void pause_game() {
+    printf("GamePaused! \n");
+    is_game_paused = true;
+    gpio_set_level(PAUSE_LED_PIN, 1);
+    gpio_set_level(LED1_PIN, !its_player1s_turn);
+    gpio_set_level(LED2_PIN, its_player1s_turn);
+
+    // JSON-Nachricht erstellen
+    cJSON *json = cJSON_CreateObject();
+    cJSON_AddStringToObject(json, "action", "pause_time");
+    cJSON_AddNumberToObject(json, "player1_time", time_player_1);
+    cJSON_AddNumberToObject(json, "player2_time", time_player_2);
+
+    // JSON-Nachricht senden
+    if (server_handle != NULL)
+    {
+        char *json_str = cJSON_Print(json);
+        send_json_to_clients(server_handle, json_str); // server_handle muss definiert sein
+
+        // Speicher freigeben
+        free(json_str);
+    }
+    else {
+        ESP_LOGE("main", "Server-Handle ist NULL!");
+    }
+    cJSON_Delete(json);
+}  
+
+
+
+
+static void start_signal_delay() {
+    is_in_signal_delay = true;
+    need_to_send_signal = true;
+    signal_delay_start_time = esp_timer_get_time() / 1000;
+    gpio_set_level(PAUSE_LED_PIN, 1);
+    if (pause_event == 2) {
+        pause_game();
+        pause_event = 0;
+    }
+    else {
+        vTaskDelay(pdMS_TO_TICKS(SIGNAL_DELAY));
+        sendSignal();
+    }
+
+    
+    
+}
+
+static void handle_signal(int player) {
+    if (!is_game_paused)
+    {
+        // warte auf Senden des Signals
+        if (!need_to_send_signal){ // damit es nicht resetet wird bei mehrfachem auslösen
+            if ((its_player1s_turn && player == 1) || (!its_player1s_turn && player == 2)) // es wird nur auf Signale des aktuellen Spielers gehört
+            {
+                start_signal_delay();
+            }            
+        }
+    }
+    
+    
+}
+
+// ISR Handler
+static void IRAM_ATTR handle_signal_player1_isr(void* arg) {
+    if (!is_game_paused)
+    {
+        button_event = 1;
+    }
+    
+    
+}
+
+static void IRAM_ATTR handle_signal_player2_isr(void* arg) {
+    if (!is_game_paused)
+    {
+        button_event = 2;
+    }
+}
+
+
+    
+
+  
+
+
+static void IRAM_ATTR pause_game_isr(void* arg) {
+    if (is_game_paused) {
+        pause_event = 1;  // Resume requested
+    }
+    else {
+        pause_event = 2;  // Pause requested
+    }
+    
+    
+}
+
+
+
+
+
+
+
+static void update_time(void) {
+    if (!is_game_paused && !is_in_signal_delay) {
+        uint64_t current_millis = esp_timer_get_time() / 1000;
+        uint64_t delta_time = current_millis - last_millis;
+        
+        if (its_player1s_turn && time_player_1 > 0) {
+            time_player_1 -= delta_time;
+        } else if (!its_player1s_turn && time_player_2 > 0) {
+            time_player_2 -= delta_time;
+        }
+        
+        last_millis = current_millis;
+    }
+}
+
+static void end_game() {
+    is_game_paused = true;
+
+    if (its_player1s_turn) {
+        time_player_1 = 0;
+    } else {
+        time_player_2 = 0;
+    }
+
+    while (1)
+    {
+        gpio_set_level(LED1_PIN, its_player1s_turn);
+        gpio_set_level(LED2_PIN, !its_player1s_turn);
+        vTaskDelay(pdMS_TO_TICKS(500));
+        
+        gpio_set_level(LED1_PIN, 0);
+        gpio_set_level(LED2_PIN, 0);
+        vTaskDelay(pdMS_TO_TICKS(500));
+    }
+    
+}
+
+static void time_is_up() {
+    if (time_player_1 <= 0) {
+        time_player_1 = 0;
+        gpio_set_level(LED1_PIN, 1);
+        gpio_set_level(LED2_PIN, 0);
+    } else {
+        time_player_2 = 0;
+        gpio_set_level(LED1_PIN, 0);
+        gpio_set_level(LED2_PIN, 1);
+    }
+    end_game();
+}
+
+
+
+
+void app_main(void) {
+    // WebServer initialisieren
+    init_webserver();
+    
+    while (server_handle == NULL)
+    {
+        server_handle = get_webserver_handle();
+    }
+    
+
+
+    // GPIO Konfiguration
+    gpio_config_t io_conf = {
+        .mode = GPIO_MODE_OUTPUT,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE
+    };
+    
+    
+    // Output Pins konfigurieren
+    io_conf.pin_bit_mask = (1ULL<<LED1_PIN) | (1ULL<<LED2_PIN) | 
+                          (1ULL<<PAUSE_LED_PIN) | (1ULL<<POWER_LED_PIN) |
+                          (1ULL<<MACHINE_PIN_OUT1) | (1ULL<<MACHINE_PIN_OUT2);
+    gpio_config(&io_conf);
+
+    // Input Pins konfigurieren
+    io_conf.mode = GPIO_MODE_INPUT;
+    io_conf.pull_up_en = GPIO_PULLUP_ENABLE;
+    io_conf.pin_bit_mask = (1ULL<<HUMAN_PIN1) | (1ULL<<HUMAN_PIN2) |
+                          (1ULL<<PAUSE_PIN);
+    gpio_config(&io_conf);
+
+
+    // Mashine-Input Pins konfigurieren
+    gpio_config_t io_conf_machine = {
+        .mode = GPIO_MODE_INPUT,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_ENABLE,  // Pull-down aktivieren
+        .intr_type = GPIO_INTR_POSEDGE,        // Trigger bei steigender Flanke (0V -> 3.3V)
+        .pin_bit_mask = (1ULL<<MACHINE_PIN_IN1) | (1ULL<<MACHINE_PIN_IN2)
+    };
+
+
+    gpio_install_isr_service(0);
+
+    // Interrupt für Pause-Button
+    gpio_set_intr_type(PAUSE_PIN, GPIO_INTR_POSEDGE);
+    
+    gpio_isr_handler_add(PAUSE_PIN, pause_game_isr, NULL);
+
+
+    // Interrupt für HUMAN_PIN1-Button
+    gpio_set_intr_type(HUMAN_PIN1, GPIO_INTR_POSEDGE);
+    gpio_isr_handler_add(HUMAN_PIN1, handle_signal_player1_isr, NULL);
+
+    // Interrupt für MACHINE_PIN_IN1
+    gpio_set_intr_type(MACHINE_PIN_IN1, GPIO_INTR_POSEDGE);
+    gpio_isr_handler_add(MACHINE_PIN_IN1, handle_signal_player1_isr, NULL);
+
+    // Interrupt für HUMAN_PIN2-Button
+    gpio_set_intr_type(HUMAN_PIN2, GPIO_INTR_POSEDGE);
+    gpio_isr_handler_add(HUMAN_PIN2, handle_signal_player2_isr, NULL);
+
+    // Interrupt für MACHINE_PIN_IN2
+    gpio_set_intr_type(MACHINE_PIN_IN2, GPIO_INTR_POSEDGE);
+    gpio_isr_handler_add(MACHINE_PIN_IN2, handle_signal_player2_isr, NULL);
+
+
+
+    // Initialisierung
+    gpio_set_level(POWER_LED_PIN, 1);
+    its_player1s_turn = esp_random() & 1;
+
+    for(int i = 0; i < 10; i++) {
+        gpio_set_level(LED1_PIN, 1);
+        gpio_set_level(LED2_PIN, 0);
+        vTaskDelay(pdMS_TO_TICKS(i*START_ANIMATION_FACTOR));
+        gpio_set_level(LED1_PIN, 0);
+        gpio_set_level(LED2_PIN, 1);
+        vTaskDelay(pdMS_TO_TICKS(i*START_ANIMATION_FACTOR*1.5));
+    }
+
+    update_leds();
+
+
+    pause_game();// waiting for pauseputton to be pressed
+
+
+    while(1) {
+        // Handle resume after pause
+        if (pause_event == 1) {
+            resume_game();
+            pause_event = 0;
+        }
+
+        
+        // Handle buttonEvent TODO Handle Signal
+        if (button_event != 0) {
+            handle_signal(button_event);
+            button_event = 0;  // Event zurücksetzen
+        }
+        
+        
+        update_time();
+        if (time_player_1 <= 0 || time_player_2 <= 0)
+        {
+            time_is_up();
+        }
+        
+        
+        
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+}
+
