@@ -4,6 +4,8 @@ let player2Time = 0; // Zeit von Spieler 2 in Millisekunden
 let currentPlayer = null; // Aktueller Spieler (1 oder 2)
 let timerInterval = null; // Interval-ID für das Herunterzählen
 let is_paused = false; // Spiel pausiert oder nicht
+let barPlayer1 = null;
+let barPlayer2 = null;
 
 // WebSocket-Verbindung
 const socket = new WebSocket('wss://192.168.4.1/ws');
@@ -24,6 +26,11 @@ async function initializeTime() {
         
     }
 
+    if (barPlayer1 === null || barPlayer2 === null) {
+        barPlayer1 = document.getElementById('barPlayer1');
+        barPlayer2 = document.getElementById('barPlayer2');
+    }
+
     // Zeige die initialen Zeiten an
     updateDisplay();
 
@@ -36,9 +43,12 @@ async function initializeTime() {
 
 // Aktualisiere die Anzeige auf der Website
 function updateDisplay() {
-    document.getElementById('max_time').innerText = `${(maxTime / 1000).toFixed(1)}s`;
     document.getElementById('time_player_1').innerText = `${(player1Time / 1000).toFixed(1)}s`;
     document.getElementById('time_player_2').innerText = `${(player2Time / 1000).toFixed(1)}s`;
+    
+    // Setze die Höhe der Balken
+    barPlayer1.style.height = `${player1Time / maxTime * 100}%`;
+    barPlayer2.style.height = `${player2Time / maxTime * 100}%`;
 }
 
 // Starte das Herunterzählen für den aktuellen Spieler
@@ -99,25 +109,6 @@ socket.onmessage = function (event) {
         console.log("Nachricht vom Server:", data.message);
     }
 };
-
-
-async function writePsoidoTime() {
-    const barPlayer1 = document.getElementById('barPlayer1');
-    const barPlayer2 = document.getElementById('barPlayer2');
-
-    // Setze die Höhe der Balken
-    barPlayer1.style.height = `${player1Time / maxTime * 100}%`;
-    barPlayer2.style.height = `${player2Time / maxTime * 100}%`;
-
-    // Berechne die px Höhe der Balken
-    const heightPlayer1 = barPlayer1.getBoundingClientRect().height;
-    const heightPlayer2 = barPlayer2.getBoundingClientRect().height;
-
-    // Schreibe die px Höhen auf die Website
-    document.getElementById('height_player_1').innerText = `${heightPlayer1.toFixed(2)}s`;
-    document.getElementById('height_player_2').innerText = `${heightPlayer2.toFixed(2)}s`;
-}
-setInterval(writePsoidoTime, 10);
 
 
 

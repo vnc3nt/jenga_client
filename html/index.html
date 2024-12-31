@@ -8,17 +8,13 @@
     <link rel="stylesheet" type="text/css" href="style.css">
 </head>
 <body onload="initializeTime()">
-    <h1 style="text-align: center;">4 Gewinnt</h1>
-    <p style="text-align: center;">Max Time: <span id="max_time"></span></p>
-    <p style="text-align: center;">Time Player 1: <span id="time_player_1"></span></p>
-    <p style="text-align: center;">Time Player 2: <span id="time_player_2"></span></p>
+    <h1>4 Gewinnt</h1>
+
     <div id="chartContainer">
-        <div id="barPlayer1" class="bar" style="transform: scaleY(1);"></div>
-        <div id="barPlayer2" class="bar" style="transform: scaleY(1);"></div>
+        <div id="barPlayer1" class="bar">1<span class="times" id="time_player_1"></span></div>
+        <div id="barPlayer2" class="bar">2<span class="times" id="time_player_2"></span></div>
     </div>
-    <div class="times">
-        <span id="height_player_1"></span> | <span id="height_player_2"></span>
-    </div>
+    
 
 </body>
 </html>
