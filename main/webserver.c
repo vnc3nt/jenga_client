@@ -222,7 +222,6 @@ static esp_err_t script_handler(httpd_req_t *req) {
     return httpd_resp_send(req, (const char *)script_js_start, script_js_size);
 }
 
-
 static httpd_handle_t start_wss_echo_server(void)
 {
     // Prepare keep-alive engine
@@ -279,6 +278,12 @@ static httpd_handle_t start_wss_echo_server(void)
         };
         httpd_uri_t script_uri = {
             .uri = "/script.js",
+            .method = HTTP_GET,
+            .handler = script_handler,
+            .user_ctx = NULL
+        };
+        httpd_uri_t buttonScript_uri = {
+            .uri = "/buttons.js",
             .method = HTTP_GET,
             .handler = script_handler,
             .user_ctx = NULL
