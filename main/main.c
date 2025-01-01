@@ -3,6 +3,10 @@
 // TODO Website bauen
 //TODO Pause-Button 3 sek gedrückt halten um esp auszuschalten
    //TODO dann kurz drücken um zu starten (wenn an strom angeschlossen soll esp auch erst schlafen bleiben)
+// TODO wenn spiel noch nicht gestartet ist:
+    // Button1 drücken um weniger maxzeit (-30s)
+    //Button2 drücken für mehr maxzeit(+30s)
+    // Button1 & Button2 1s gleichzeitig gedrückt halten um Startspieler zu tauschen
 #include "webserver.h"
 #include <stdio.h>
 #include <inttypes.h>
