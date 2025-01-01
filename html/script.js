@@ -18,7 +18,7 @@ async function initializeTime() {
     maxTime = data.max_time;
     player1Time = data.time_player_1;
     player2Time = data.time_player_2;
-    is_paused = data.is_paused;
+    is_paused = data.is_paused === true || data.is_paused === "true"; // Unterstützt sowohl Boolean als auch String
 
     if(!currentPlayer) {
         currentPlayer = data.its_player1s_turn;
@@ -34,9 +34,8 @@ async function initializeTime() {
     // Zeige die initialen Zeiten an
     updateDisplay();
 
-    console.log(is_paused);
 
-    if (is_paused === "false") {
+    if (!is_paused) {
         startTimer(currentPlayer);
     }
 }
@@ -46,14 +45,17 @@ function updateDisplay() {
     document.getElementById('time_player_1').innerText = `${(player1Time / 1000).toFixed(1)}s`;
     document.getElementById('time_player_2').innerText = `${(player2Time / 1000).toFixed(1)}s`;
     
+    // Verhindere Division durch 0
+    const barHeightPlayer1 = maxTime > 0 ? (player1Time / maxTime * 100) : 0;
+    const barHeightPlayer2 = maxTime > 0 ? (player2Time / maxTime * 100) : 0;
+
     // Setze die Höhe der Balken
-    barPlayer1.style.height = `${player1Time / maxTime * 100}%`;
-    barPlayer2.style.height = `${player2Time / maxTime * 100}%`;
+    barPlayer1.style.height = `${barHeightPlayer1}%`;
+    barPlayer2.style.height = `${barHeightPlayer2}%`;
 }
 
 // Starte das Herunterzählen für den aktuellen Spieler
 function startTimer(player) {
-    console.log(player);
     stopTimer(); // Beende vorherigen Timer, falls aktiv
 
     currentPlayer = player;
@@ -105,7 +107,19 @@ socket.onmessage = function (event) {
         // Setze die Zeiten auf die vom ESP32 gesendeten Werte
         initializeTime();
 
-    } else if (data.message) {
+    } else if (data.action === 'init_time') {
+        console.log('Zeiten werden initialisiert!');
+
+        // Setze die Zeiten auf die vom ESP32 gesendeten Werte
+        maxTime = data.max_time;
+        player1Time = maxTime;
+        player2Time = maxTime;
+
+        // Aktualisiere die Anzeige
+        updateDisplay();
+    }
+    
+    else if (data.message) {
         console.log("Nachricht vom Server:", data.message);
     }
 };

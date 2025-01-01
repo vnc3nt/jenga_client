@@ -1,11 +1,7 @@
-//TODO wenn Zeit abgelaufen ist
 //TODO Zertifikate sind warum auch immer ungültig
-// TODO Website bauen
 //TODO Pause-Button 3 sek gedrückt halten um esp auszuschalten
    //TODO dann kurz drücken um zu starten (wenn an strom angeschlossen soll esp auch erst schlafen bleiben)
 // TODO wenn spiel noch nicht gestartet ist:
-    // Button1 drücken um weniger maxzeit (-30s)
-    //Button2 drücken für mehr maxzeit(+30s)
     // Button1 & Button2 1s gleichzeitig gedrückt halten um Startspieler zu tauschen
 #include "webserver.h"
 #include <stdio.h>
@@ -37,9 +33,21 @@
 
 // Timing Konstanten
 #define PULSE_DURATION           100
-#define START_ANIMATION_FACTOR   10
+#define START_ANIMATION_FACTOR   50
 #define SIGNAL_DELAY            500
 #define MAX_TIME                300000
+
+//Buttontiming
+static bool p1_pressed = false;
+static bool p2_pressed = false;
+
+static uint64_t p1_press_start_time = 0;
+static uint64_t p2_press_start_time = 0;
+
+#define BOTH_HELD_DURATION 1000 // Dauer in Millisekunden für gleichzeitiges Halten
+#define MAX_TIME_DIFFERENCE 100 // Maximal erlaubte Zeitdifferenz in Millisekunden
+
+
 
 // Globale Variablen
 uint32_t max_time = MAX_TIME;
@@ -50,6 +58,10 @@ static uint64_t signal_delay_start_time = 0;
 
 // Globale Variable für den ISR Status
 static volatile uint8_t button_event = 0;  // 0 = kein Event, 1 = Player1, 2 = Player2
+static volatile uint8_t edit_time_event = 0;  // 0 = kein Event, 1 = -30s, 2 = +30s
+
+// Globale Variable für den Spielstatus
+static bool game_has_started = false;
 
 // Globale Variable für den Pause-Status
 static volatile uint8_t pause_event = 0;  // 0 = kein Event, 1 = Resume, 2 = Pause
@@ -98,7 +110,7 @@ static void sendSignal() {
         // JSON-Nachricht senden
         if (server_handle != NULL) {
             char *json_str = cJSON_Print(json);
-            send_json_to_clients(server_handle, json_str); // server_handle muss definiert sein
+            send_json_to_clients(server_handle, json_str);
 
             // Speicher freigeben
             free(json_str);
@@ -155,7 +167,7 @@ static void pause_game() {
     if (server_handle != NULL)
     {
         char *json_str = cJSON_Print(json);
-        send_json_to_clients(server_handle, json_str); // server_handle muss definiert sein
+        send_json_to_clients(server_handle, json_str);
 
         // Speicher freigeben
         free(json_str);
@@ -208,7 +220,17 @@ static void IRAM_ATTR handle_signal_player1_isr(void* arg) {
     {
         button_event = 1;
     }
-    
+
+    if (is_game_paused && !game_has_started)
+    {
+        edit_time_event = 1;
+        uint64_t now = esp_timer_get_time() / 1000;
+        if (!p1_pressed) {
+            p1_pressed = true;
+            p1_press_start_time = now;
+        }
+    }
+
     
 }
 
@@ -217,10 +239,60 @@ static void IRAM_ATTR handle_signal_player2_isr(void* arg) {
     {
         button_event = 2;
     }
+
+    if (is_game_paused && !game_has_started)
+    {
+        edit_time_event = 2;
+        uint64_t now = esp_timer_get_time() / 1000;
+        if (!p2_pressed) {
+            p2_pressed = true;
+            p2_press_start_time = now;
+        }
+    } 
 }
 
 
+static void handle_edit_time(int event) {
+    if (event == 1)
+    {
+        if (max_time > 30000)
+        {
+            max_time -= 30000;
+        }
+        
+    }
+    else if (event == 2)
+    {
+        max_time += 30000;
+        
+    }
+    else {
+        printf("Invalid event");
+    }
+
     
+    time_player_1 = max_time;
+    time_player_2 = max_time;
+
+    // JSON-Nachricht erstellen
+    cJSON *json = cJSON_CreateObject();
+    cJSON_AddStringToObject(json, "action", "init_time");
+    cJSON_AddNumberToObject(json, "max_time", max_time);
+
+    // JSON-Nachricht senden
+    if (server_handle != NULL)
+    {
+        char *json_str = cJSON_Print(json);
+        send_json_to_clients(server_handle, json_str);
+
+        // Speicher freigeben
+        free(json_str);
+    }
+    else {
+        ESP_LOGE("main", "Server-Handle ist NULL!");
+    }
+    cJSON_Delete(json);
+}
 
   
 
@@ -300,10 +372,14 @@ void app_main(void) {
     init_webserver();
     
     while (server_handle == NULL)
-    {
+    {        
         server_handle = get_webserver_handle();
+        if (server_handle == NULL)
+        {
+            ESP_LOGE("main", "Server-Handle ist NULL!");
+        }
     }
-    
+    ESP_LOGI("main", "Server-Handle erhalten!");
 
 
     // GPIO Konfiguration
@@ -324,10 +400,21 @@ void app_main(void) {
     // Input Pins konfigurieren
     io_conf.mode = GPIO_MODE_INPUT;
     io_conf.pull_up_en = GPIO_PULLUP_ENABLE;
-    io_conf.pin_bit_mask = (1ULL<<HUMAN_PIN1) | (1ULL<<HUMAN_PIN2) |
-                          (1ULL<<PAUSE_PIN);
+    io_conf.pin_bit_mask = (1ULL<<PAUSE_PIN);
+    io_conf.intr_type = GPIO_INTR_POSEDGE; // Steigende Flanke
+
     gpio_config(&io_conf);
 
+    gpio_config_t io_conf_humane = {
+        .pin_bit_mask = (1ULL << HUMAN_PIN1) | (1ULL << HUMAN_PIN2),
+        .mode = GPIO_MODE_INPUT,
+        .pull_up_en = GPIO_PULLUP_ENABLE, // Pull-Up aktivieren
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_POSEDGE // Steigende Flanke
+    };
+    gpio_config(&io_conf_humane);
+
+    
 
     // Mashine-Input Pins konfigurieren
     gpio_config_t io_conf_machine = {
@@ -341,33 +428,17 @@ void app_main(void) {
 
     gpio_install_isr_service(0);
 
-    // Interrupt für Pause-Button
-    gpio_set_intr_type(PAUSE_PIN, GPIO_INTR_POSEDGE);
-    
     gpio_isr_handler_add(PAUSE_PIN, pause_game_isr, NULL);
-
-
-    // Interrupt für HUMAN_PIN1-Button
-    gpio_set_intr_type(HUMAN_PIN1, GPIO_INTR_POSEDGE);
     gpio_isr_handler_add(HUMAN_PIN1, handle_signal_player1_isr, NULL);
-
-    // Interrupt für MACHINE_PIN_IN1
-    gpio_set_intr_type(MACHINE_PIN_IN1, GPIO_INTR_POSEDGE);
     gpio_isr_handler_add(MACHINE_PIN_IN1, handle_signal_player1_isr, NULL);
-
-    // Interrupt für HUMAN_PIN2-Button
-    gpio_set_intr_type(HUMAN_PIN2, GPIO_INTR_POSEDGE);
     gpio_isr_handler_add(HUMAN_PIN2, handle_signal_player2_isr, NULL);
-
-    // Interrupt für MACHINE_PIN_IN2
-    gpio_set_intr_type(MACHINE_PIN_IN2, GPIO_INTR_POSEDGE);
     gpio_isr_handler_add(MACHINE_PIN_IN2, handle_signal_player2_isr, NULL);
 
 
 
     // Initialisierung
     gpio_set_level(POWER_LED_PIN, 1);
-    its_player1s_turn = esp_random() & 1;
+    its_player1s_turn = esp_random() & 1; // Zufälliger Startspieler
 
     for(int i = 0; i < 10; i++) {
         gpio_set_level(LED1_PIN, 1);
@@ -380,19 +451,62 @@ void app_main(void) {
 
     update_leds();
 
-
     pause_game();// waiting for pauseputton to be pressed
 
+    while (is_game_paused)
+    {
+        // start game
+        if (pause_event == 1) {
+            resume_game();
+            pause_event = 0; // Event zurücksetzen
+        }
 
+        // edit maxtime
+        if (edit_time_event != 0) {
+            handle_edit_time(edit_time_event);
+            edit_time_event = 0; // Event zurücksetzen
+        }
+
+        // switch startplayer
+        if (p1_pressed && p2_pressed) {
+            if (esp_timer_get_time() / 1000 - p1_press_start_time >= BOTH_HELD_DURATION &&
+                esp_timer_get_time() / 1000 - p2_press_start_time >= BOTH_HELD_DURATION &&
+                abs((int64_t)(p1_press_start_time - p2_press_start_time)) <= MAX_TIME_DIFFERENCE) {
+
+                    next_player();
+                    p1_pressed = false;
+                    p2_pressed = false;
+            }
+        }
+
+        printf(p1_pressed == 1 ? "P1: 1" : "P1: 0");
+        printf(p2_pressed == 1 ? "P2: 1" : "P2: 0");
+
+        // reset press after release
+        if (p1_pressed && gpio_get_level(HUMAN_PIN1) == 1) {
+            p1_pressed = false;
+        }
+        // reset press after release
+        if (p2_pressed && gpio_get_level(HUMAN_PIN2) == 1) {
+            p2_pressed = false;
+        }
+
+        
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+    
+    
+
+    game_has_started = true;
     while(1) {
         // Handle resume after pause
         if (pause_event == 1) {
             resume_game();
-            pause_event = 0;
+            pause_event = 0; // Event zurücksetzen
         }
 
         
-        // Handle buttonEvent TODO Handle Signal
+        // Handle buttonEvent
         if (button_event != 0) {
             handle_signal(button_event);
             button_event = 0;  // Event zurücksetzen

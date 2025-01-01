@@ -297,7 +297,7 @@ static httpd_handle_t start_wss_echo_server(void)
     ESP_LOGI(TAG, "WebSocket server started successfully");
 
     if (server != NULL) {
-        ESP_LOGE(TAG, "server != NULL");
+        ESP_LOGI(TAG, "server != NULL");
     }
     else {
         ESP_LOGE(TAG, "server == NULL");
@@ -436,9 +436,9 @@ void init_webserver(void) {
 
     // Start the WSS Server
     server = start_wss_echo_server();
-    if (server != NULL)
+    if (server == NULL)
     {
-        ESP_LOGE(TAG, "immer noch server != NULL");
+        ESP_LOGE(TAG, "immer noch server == NULL");
     }
     
     
