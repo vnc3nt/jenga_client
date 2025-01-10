@@ -33,7 +33,7 @@
 
 // Timing Konstanten
 #define PULSE_DURATION           100
-#define START_ANIMATION_FACTOR   50
+#define START_ANIMATION_FACTOR   5
 #define SIGNAL_DELAY            500
 #define MAX_TIME                300000
 
@@ -440,13 +440,13 @@ void app_main(void) {
     gpio_set_level(POWER_LED_PIN, 1);
     its_player1s_turn = esp_random() & 1; // Zufälliger Startspieler
 
-    for(int i = 0; i < 10; i++) {
+    for(int i = 30; i > 0; i--) {
         gpio_set_level(LED1_PIN, 1);
         gpio_set_level(LED2_PIN, 0);
-        vTaskDelay(pdMS_TO_TICKS(i*START_ANIMATION_FACTOR));
+        vTaskDelay(pdMS_TO_TICKS((i+0.5)*START_ANIMATION_FACTOR));
         gpio_set_level(LED1_PIN, 0);
         gpio_set_level(LED2_PIN, 1);
-        vTaskDelay(pdMS_TO_TICKS(i*START_ANIMATION_FACTOR*1.5));
+        vTaskDelay(pdMS_TO_TICKS(i*START_ANIMATION_FACTOR));
     }
 
     update_leds();

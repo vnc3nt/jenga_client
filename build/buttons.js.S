@@ -1,4 +1,4 @@
-/* * Data converted from /Users/vnc3nt/Documents/VS-Code/ESP32/vier_gewinnt/html/buttons.js
+/* * Data converted from /Users/vnc3nt/Documents/Code/VS-Code/ESP32/vier_gewinnt/html/buttons.js
  */
 .data
 #if !defined (__APPLE__) && !defined (__linux__)
