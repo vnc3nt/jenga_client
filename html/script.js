@@ -1,3 +1,5 @@
+// Anzeige der Zeiten und Steuerung des Timers
+
 let maxTime = 0; // Maximale Zeit in Millisekunden
 let player1Time = 0; // Zeit von Spieler 1 in Millisekunden
 let player2Time = 0; // Zeit von Spieler 2 in Millisekunden
@@ -145,3 +147,33 @@ socket.onmessage = function (event) {
 
 
 
+
+
+// DARK MODE
+
+
+document.addEventListener('DOMContentLoaded', () => {
+    let stored = localStorage.getItem('theme'); // 'dark', 'light' oder null
+    if (stored) {
+        document.documentElement.setAttribute('data-theme', stored);
+    }
+});
+  
+window.toggleDarkMode = () => {
+    const htmlEl = document.documentElement;
+    const current = htmlEl.getAttribute('data-theme'); // 'dark' oder 'light' (evtl. null)
+
+    let newMode;
+    if (!current) {
+        // Kein data-theme => Wir haben gerade System-Mode, also gucken wir, ob laut System dark ist
+        const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        newMode = systemDark ? 'light' : 'dark'; // Wir kippen um
+    } else {
+        // 'dark' -> wird zu 'light'; 'light' -> wird zu 'dark'
+        newMode = (current === 'dark') ? 'light' : 'dark';
+    }
+
+    htmlEl.setAttribute('data-theme', newMode);
+    localStorage.setItem('theme', newMode);
+};
+  

@@ -1,7 +1,7 @@
 {
     "version":            "1.2",
     "project_name":       "vier_gewinnt",
-    "project_version":    "67e246b-dirty",
+    "project_version":    "0862a16-dirty",
     "project_path":       "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/vier_gewinnt",
     "idf_path":           "/Users/vnc3nt/esp/esp-idf",
     "build_dir":          "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/vier_gewinnt/build",
@@ -910,7 +910,7 @@
             "managed_reqs": [],
             "managed_priv_reqs": [ "espressif__mdns", "protocol_examples_common" ],
             "file": "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/vier_gewinnt/build/esp-idf/main/libmain.a",
-            "sources": [ "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/vier_gewinnt/main/main.c", "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/vier_gewinnt/main/webserver.c", "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/vier_gewinnt/main/keep_alive.c", "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/vier_gewinnt/build/index.html.S", "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/vier_gewinnt/build/style.css.S", "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/vier_gewinnt/build/script.js.S", "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/vier_gewinnt/build/buttons.js.S", "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/vier_gewinnt/build/servercert.pem.S", "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/vier_gewinnt/build/prvtkey.pem.S" ],
+            "sources": [ "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/vier_gewinnt/main/main.c", "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/vier_gewinnt/main/webserver.c", "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/vier_gewinnt/main/keep_alive.c", "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/vier_gewinnt/build/index.html.S", "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/vier_gewinnt/build/style.css.S", "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/vier_gewinnt/build/script.js.S", "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/vier_gewinnt/build/sun-moon.png.S", "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/vier_gewinnt/build/servercert.pem.S", "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/vier_gewinnt/build/prvtkey.pem.S" ],
             "include_dirs": [ "." ]
         },
         "mbedtls": {

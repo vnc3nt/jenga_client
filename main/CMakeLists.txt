@@ -6,7 +6,7 @@ idf_component_register(
     EMBED_FILES "../html/index.html"
                "../html/style.css"
                "../html/script.js"
-               "../html/buttons.js"
+               "../html/img/sun-moon.png" 
     EMBED_TXTFILES "certs/servercert.pem"
                     "certs/prvtkey.pem"
                     

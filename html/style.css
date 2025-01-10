@@ -5,17 +5,18 @@
 
     --bg-color-dark: rgb(32, 32, 32);
     --text-color-dark: white;
+}
 
+:root[data-theme="light"] {
     --bg-color: var(--bg-color-light);
     --text-color: var(--text-color-light);
 }
 
-@media (prefers-color-scheme: dark) {
-    :root {
-        --bg-color: var(--bg-color-dark);
-        --text-color: var(--text-color-dark);
-    }
+:root[data-theme="dark"] {
+    --bg-color: var(--bg-color-dark);
+    --text-color: var(--text-color-dark);
 }
+
 
 body {
     background-color: var(--bg-color);
@@ -28,9 +29,29 @@ body {
 
 button {
     margin-top: 20px;
-    padding: 10px 20px;
+    padding: 5px;
     cursor: pointer;
+    height: 2.5rem;
+    width: 2.5rem;
+    background: none;
+    border: none;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.3s;
 }
+
+button:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+img {
+    width: 1.8rem;
+    height: 1.8rem;
+    object-fit: contain;
+}
+
 
 #chartContainer {
     position: absolute;
@@ -41,9 +62,9 @@ button {
     display: flex;
     align-items: flex-end; /* Säulen von unten ausrichten */
     justify-content: space-around;
-    height: 75vh; /* Gesamthöhe des Diagramms */
+    height: 75%; /* Gesamthöhe des Diagramms */
     width: 65vw;
-    border-bottom: 1px solid black;
+    border-bottom: 2px solid black;
 }
   
 .bar {

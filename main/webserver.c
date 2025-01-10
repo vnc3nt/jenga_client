@@ -222,6 +222,16 @@ static esp_err_t script_handler(httpd_req_t *req) {
     return httpd_resp_send(req, (const char *)script_js_start, script_js_size);
 }
 
+// Handler für sun-moon.png
+static esp_err_t sun_moon_handler(httpd_req_t *req) {
+    httpd_resp_set_type(req, "image/png");
+    extern const unsigned char img_sun_moon_png_start[] asm("_binary_sun_moon_png_start");
+    extern const unsigned char img_sun_moon_png_end[] asm("_binary_sun_moon_png_end");
+    const size_t img_sun_moon_png_size = (img_sun_moon_png_end - img_sun_moon_png_start);
+    return httpd_resp_send(req, (const char *)img_sun_moon_png_start, img_sun_moon_png_size);
+}
+
+
 static httpd_handle_t start_wss_echo_server(void)
 {
     // Prepare keep-alive engine
@@ -282,17 +292,21 @@ static httpd_handle_t start_wss_echo_server(void)
             .handler = script_handler,
             .user_ctx = NULL
         };
-        httpd_uri_t buttonScript_uri = {
-            .uri = "/buttons.js",
+        httpd_uri_t sun_moon_uri = {
+            .uri = "/img/sun-moon.png",
             .method = HTTP_GET,
-            .handler = script_handler,
+            .handler = sun_moon_handler,
             .user_ctx = NULL
         };
+
+        
 
     // Register handlers
     httpd_register_uri_handler(server, &index_uri);
     httpd_register_uri_handler(server, &style_uri);
     httpd_register_uri_handler(server, &script_uri);
+    httpd_register_uri_handler(server, &sun_moon_uri);
+
 
     ESP_LOGI(TAG, "WebSocket server started successfully");
 
