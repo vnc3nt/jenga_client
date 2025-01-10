@@ -1,15 +1,17 @@
 window.toggleDarkMode = () => {
-    let isDarkMode = localStorage.getItem('darkMode') === 'true' || window.matchMedia('(prefers-color-scheme: dark)').matches;
-
+    // Hole nur den gespeicherten Zustand, ignoriere Systemeinstellung beim Toggle
+    let isDarkMode = localStorage.getItem('darkMode');
+    
+    // Wenn noch kein Zustand gespeichert ist, nimm die Systemeinstellung als Ausgangspunkt
+    if (isDarkMode === null) {
+        isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    } else {
+        isDarkMode = isDarkMode === 'true';
+    }
+    
+    // Invertiere den aktuellen Zustand
     isDarkMode = !isDarkMode;
 
-    if (isDarkMode) {
-        document.documentElement.style.setProperty('--bg-color', 'black');
-        document.documentElement.style.setProperty('--text-color', 'white');
-    } else {
-        document.documentElement.style.setProperty('--bg-color', 'white');
-        document.documentElement.style.setProperty('--text-color', 'black');
-    }
 
-    localStorage.setItem('darkMode', isDarkMode); // Zustand speichern
+    localStorage.setItem('darkMode', isDarkMode);
 };

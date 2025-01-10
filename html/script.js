@@ -10,6 +10,19 @@ let barPlayer2 = null;
 // WebSocket-Verbindung
 const socket = new WebSocket('wss://192.168.4.1/ws');
 
+async function styleCurrentPlayer(player) {
+    barPlayer1 = document.getElementById('barPlayer1');
+    barPlayer2 = document.getElementById('barPlayer2');
+    if (player === 1) {
+        barPlayer1.style.filter = 'grayscale(0)';
+        barPlayer2.style.filter = 'grayscale(0.5)';
+    } else if (player === 2) {
+        barPlayer2.style.filter = 'grayscale(0)';
+        barPlayer1.style.filter = 'grayscale(0.5)';
+    }
+}
+
+
 // Initialisiere die Zeiten von /time
 async function initializeTime() {
     const response = await fetch('/time');
@@ -22,8 +35,8 @@ async function initializeTime() {
 
     if(!currentPlayer) {
         currentPlayer = data.its_player1s_turn;
+        styleCurrentPlayer(currentPlayer);
         console.log(currentPlayer);
-        
     }
 
     if (barPlayer1 === null || barPlayer2 === null) {
@@ -98,11 +111,13 @@ socket.onmessage = function (event) {
     if (data.action === 'start_time') {
         console.log(`Spieler ${data.current_player} ist dran!`);
         initializeTime();
+        styleCurrentPlayer(data.current_player);
         startTimer(data.current_player); // Starte den Timer für den aktuellen Spieler
-
+        
     } else if (data.action === 'pause_time') {
         console.log('Spiel pausiert!');
         stopTimer(); // Stoppe das Herunterzählen
+        styleCurrentPlayer(data.current_player);
 
         // Setze die Zeiten auf die vom ESP32 gesendeten Werte
         initializeTime();
@@ -114,6 +129,8 @@ socket.onmessage = function (event) {
         maxTime = data.max_time;
         player1Time = maxTime;
         player2Time = maxTime;
+
+        styleCurrentPlayer(data.current_player);
 
         // Aktualisiere die Anzeige
         updateDisplay();
