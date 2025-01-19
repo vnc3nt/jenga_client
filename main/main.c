@@ -1,4 +1,5 @@
-//TODO Zertifikate sind warum auch immer ungültig
+//TODO bei websitereload downloaded manchmal iwas komisches
+//TODO https Zertifikate sind ungültig
 //TODO Pause-Button 3 sek gedrückt halten um esp auszuschalten
    //TODO dann kurz drücken um zu starten (wenn an strom angeschlossen soll esp auch erst schlafen bleiben)
 
@@ -14,6 +15,12 @@
 #include "esp_random.h"
 #include <esp_log.h>
 #include <cJSON.h>
+
+// Dauerspeicher
+#include "nvs_flash.h"
+#include "nvs.h"
+
+
 
 
 
@@ -377,11 +384,72 @@ static void time_is_up() {
 }
 
 
+// Initialisierung des NVS-Speichers
+esp_err_t init_nvs() {
+    printf("init_nvs\n");
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        ret = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(ret);
+    return ret;
+}
+
+// Zum Speichern von Daten
+void save_max_time(uint32_t max_time) {
+    printf("save_max_time\n");
+    nvs_handle_t my_handle;
+    esp_err_t err = nvs_open("storage", NVS_READWRITE, &my_handle);
+    if (err != ESP_OK) {
+        // Fehlerbehandlung
+        printf("Fehler bei save_max_time nvs_open\n");
+        return;
+    }
+    err = nvs_set_u32(my_handle, "max_time", max_time);
+    if (err != ESP_OK) {
+        // Fehlerbehandlung
+        printf("Fehler bei save_max_time nvs_set_u32\n");
+    }
+    err = nvs_commit(my_handle);
+    if (err != ESP_OK) {
+        // Fehlerbehandlung
+        printf("Fehler bei save_max_time nvs_commit\n");
+    }
+    nvs_close(my_handle);
+}
+
+// Zum Lesen von Daten
+uint32_t load_max_time(uint32_t default_value) {
+    printf("load_max_time\n");
+    nvs_handle_t my_handle;
+    esp_err_t err = nvs_open("storage", NVS_READONLY, &my_handle);
+    if (err != ESP_OK) {
+        printf("Fehler bei load_max_time nvs_open\n");
+        return default_value;
+    }
+    uint32_t max_time;
+    err = nvs_get_u32(my_handle, "max_time", &max_time);
+    if (err != ESP_OK) {
+        printf("Fehler bei load_max_time nvs_get_u32\n");
+        max_time = default_value;
+    }
+    nvs_close(my_handle);
+    return max_time;
+}
+
 
 
 void app_main(void) {
+    // Preferences aus Speicher initialisieren
+    init_nvs();
+    max_time = load_max_time(max_time);
+    time_player_1 = max_time;
+    time_player_2 = max_time;
+
     // WebServer initialisieren
     init_webserver();
+    
     
     while (server_handle == NULL)
     {        
@@ -469,6 +537,11 @@ void app_main(void) {
     {
         // start game
         if (pause_event == 1) {
+            // Save Preferences der maxTime im Speicher falls sie sich geändert hat
+            if (load_max_time(max_time) != max_time) {
+                save_max_time(max_time);
+            }
+
             resume_game();
             pause_event = 0; // Event zurücksetzen
         }
@@ -537,6 +610,7 @@ void app_main(void) {
         
         vTaskDelay(pdMS_TO_TICKS(10));
     }
+    
     
     
 
