@@ -35,9 +35,10 @@ static void event_handler(void *arg, esp_event_base_t event_base,
                 esp_wifi_connect();
                 break;
             case WIFI_EVENT_STA_DISCONNECTED:
-                ESP_LOGI("WIFI_STA", "Verbindung getrennt. Erneuter Verbindungsversuch...");
-                esp_wifi_connect();
+                ESP_LOGI("WIFI_STA", "Verbindung getrennt. Wiederverbinden in 5 Sekunden...");
                 xEventGroupClearBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
+                // Starte einen neuen Task, der nach einer Verzögerung die Verbindung herstellt
+                xTaskCreate(wifi_reconnect_task, "wifi_reconnect", 2048, NULL, tskIDLE_PRIORITY, NULL);
                 break;
             default:
                 break;
@@ -108,6 +109,15 @@ static void wifi_init_sta(void)
     }
 }
 
+void wifi_reconnect_task(void *pvParameter)
+{
+    // Warte 5 Sekunden (5000 ms)
+    vTaskDelay(pdMS_TO_TICKS(5000));
+    ESP_LOGI("WIFI_STA", "Versuche erneut, eine Verbindung herzustellen...");
+    esp_wifi_connect();
+    // Task selbst löschen, nachdem er seine Arbeit erledigt hat
+    vTaskDelete(NULL);
+}
 
 
 
@@ -488,10 +498,9 @@ void register_time_handler(httpd_handle_t server) {
 
 void init_webserver(void) {
     
-    ESP_LOGI(TAG, "Webserver code is starting...");
-    ESP_LOGI(TAG, "webserver startet");
+    ESP_LOGI(TAG, "Webserver startet...");
 
-    // Initialize NVS
+    // Initialize NVS flash
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
         ESP_ERROR_CHECK(nvs_flash_erase());
