@@ -100,8 +100,8 @@ static void wifi_init_sta(void)
     /* WiFi-Konfiguration mit deinen Zugangsdaten */
     wifi_config_t wifi_config = {
         .sta = {
-            .ssid = "ImmerDieseNamen",
-            .password = "3946060518250164",
+            .ssid = "Smarty",
+            .password = "irgendwas",
             .threshold.authmode = WIFI_AUTH_WPA2_PSK,
             .pmf_cfg = {
                 .capable = true,

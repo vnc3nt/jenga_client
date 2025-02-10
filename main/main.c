@@ -635,6 +635,7 @@ void app_main(void) {
         .intr_type = GPIO_INTR_POSEDGE,        // Trigger bei steigender Flanke (0V -> 3.3V)
         .pin_bit_mask = (1ULL<<MACHINE_PIN_IN1) | (1ULL<<MACHINE_PIN_IN2)
     };
+    gpio_config(&io_conf_machine);
 
 
     gpio_install_isr_service(0);
