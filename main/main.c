@@ -1,5 +1,5 @@
-//TODO bei websitereload downloaded manchmal iwas komisches
-//TODO https Zertifikate sind ungültig
+//TODO möglicherweise wird der signaldelay auf die zugzeit draufgerechnet -> jeder zug ist 500ms zu lang
+
 
 #include "webserver.h"
 #include <stdio.h>
@@ -63,6 +63,13 @@ uint32_t time_player_2 = MAX_TIME;
 static uint64_t last_millis = 0;
 static uint64_t signal_delay_start_time = 0;
 
+// Zugzeit-Speicher
+static uint32_t *player1_times = NULL;
+static uint32_t *player2_times = NULL;
+static size_t p1_time_count = 0;
+static size_t p2_time_count = 0;
+
+
 // Globale Variable für den ISR Status
 static volatile uint8_t button_event = 0;  // 0 = kein Event, 1 = Player1, 2 = Player2
 static volatile uint8_t edit_time_event = 0;  // 0 = kein Event, 1 = -30s, 2 = +30s, 3 = both pressed 5 = pressdelay
@@ -77,6 +84,8 @@ bool is_game_paused = false;
 bool its_player1s_turn = false;
 static bool is_in_signal_delay = false;
 static bool need_to_send_signal = false;
+
+
 
 //server
 httpd_handle_t server_handle = NULL;
@@ -131,11 +140,13 @@ static void update_leds(void) {
     gpio_set_level(LED2_PIN, !its_player1s_turn);
 }
 
+
 static void next_player(void) {
     printf("switching player\n");
     its_player1s_turn = !its_player1s_turn;
     update_leds();
 }
+
 
 //SIGNAL
 static void sendSignal() {
@@ -236,6 +247,78 @@ static void pause_game() {
 
 
 static void start_signal_delay() {
+    // Berechnung der aktuellen Zugzeiten
+    if(its_player1s_turn) {
+        uint32_t total_used = max_time - time_player_1;
+        uint32_t sum = 0;
+        for(size_t i=0; i<p1_time_count; i++) sum += player1_times[i];
+        uint32_t turn_time = (total_used > sum) ? (total_used - sum) : 0;
+
+        
+        
+        uint32_t* temp = realloc(player1_times, (p1_time_count+1)*sizeof(uint32_t));
+        if (temp)
+        {
+            player1_times = temp;
+        
+             player1_times[p1_time_count++] = turn_time;
+        }
+        else
+        {
+            ESP_LOGE("Signal", "Memory allocation failed!");
+        }
+        
+        
+    } else {
+        uint32_t total_used = max_time - time_player_2;
+        uint32_t sum = 0;
+        for(size_t i=0; i<p2_time_count; i++) sum += player2_times[i];
+        uint32_t turn_time = (total_used > sum) ? (total_used - sum) : 0;
+        
+        uint32_t* temp = realloc(player2_times, (p2_time_count+1)*sizeof(uint32_t));
+        if (temp)
+        {
+            player2_times = temp;
+            player2_times[p2_time_count++] = turn_time;
+        }
+        else {
+            ESP_LOGE("Signal", "Memory allocation failed!");
+        }
+        
+    }
+
+    
+    
+
+    //senden der Zugzeiten
+    cJSON* json = cJSON_CreateObject();
+    cJSON_AddStringToObject(json, "action", "turn_time");
+    cJSON_AddNumberToObject(json, "current_player", its_player1s_turn ? 1 : 2);
+
+        cJSON *p1_array = cJSON_AddArrayToObject(json, "player1_times");
+        for(size_t i=0; i<p1_time_count; i++) {
+            cJSON_AddItemToArray(p1_array, cJSON_CreateNumber(player1_times[i]));
+        }
+    
+
+        cJSON *p2_array = cJSON_AddArrayToObject(json, "player2_times");
+        for(size_t i=0; i<p2_time_count; i++) {
+            cJSON_AddItemToArray(p2_array, cJSON_CreateNumber(player2_times[i]));
+        }
+    
+
+    // JSON-Nachricht senden
+    if (server_handle != NULL) {
+        char *json_str = cJSON_Print(json);
+        send_json_to_clients(server_handle, json_str);
+        free(json_str);
+    } else {
+        ESP_LOGE("main", "Server-Handle ist NULL!");
+    }
+    cJSON_Delete(json);
+
+
+
     is_in_signal_delay = true;
     need_to_send_signal = true;
     signal_delay_start_time = esp_timer_get_time() / 1000;
@@ -246,6 +329,8 @@ static void start_signal_delay() {
     }
     else {
         vTaskDelay(pdMS_TO_TICKS(SIGNAL_DELAY));
+
+        
         sendSignal();
     }
 
@@ -487,6 +572,8 @@ uint32_t load_max_time(uint32_t default_value) {
 void app_main(void) {
     // Preferences aus Speicher initialisieren
     init_nvs();
+    player1_times = malloc(0);
+    player2_times = malloc(0);
     max_time = load_max_time(max_time);
     time_player_1 = max_time;
     time_player_2 = max_time;

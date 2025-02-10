@@ -324,16 +324,6 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("/Users/vnc3nt/Documents/Code/VS-Code/ESP32/vier_gewinnt_client/build/esp-idf/esp-tls/cmake_install.cmake")
-endif()
-
-if(NOT CMAKE_INSTALL_LOCAL_ONLY)
-  # Include the install script for the subdirectory.
-  include("/Users/vnc3nt/Documents/Code/VS-Code/ESP32/vier_gewinnt_client/build/esp-idf/esp_https_server/cmake_install.cmake")
-endif()
-
-if(NOT CMAKE_INSTALL_LOCAL_ONLY)
-  # Include the install script for the subdirectory.
   include("/Users/vnc3nt/Documents/Code/VS-Code/ESP32/vier_gewinnt_client/build/esp-idf/nvs_flash/cmake_install.cmake")
 endif()
 

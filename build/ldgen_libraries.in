@@ -48,8 +48,6 @@ $<TARGET_FILE:__idf_esp_vfs_console>
 $<TARGET_FILE:__idf_vfs>
 $<TARGET_FILE:__idf_lwip>
 $<TARGET_FILE:__idf_esp_http_server>
-$<TARGET_FILE:__idf_esp-tls>
-$<TARGET_FILE:__idf_esp_https_server>
 $<TARGET_FILE:__idf_nvs_flash>
 $<TARGET_FILE:__idf_esp_netif>
 $<TARGET_FILE:__idf_esp_eth>

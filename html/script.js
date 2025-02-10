@@ -10,7 +10,7 @@ let barPlayer1 = null;
 let barPlayer2 = null;
 
 // WebSocket-Verbindung
-const socket = new WebSocket(`wss://${window.location.hostname}/ws`);
+const socket = new WebSocket(`ws://${window.location.hostname}/ws`);
 
 
 async function styleCurrentPlayer(player) {
@@ -60,6 +60,9 @@ async function initializeTime() {
 function updateDisplay() {
     document.getElementById('time_player_1').innerText = `${(player1Time / 1000).toFixed(1)}s`;
     document.getElementById('time_player_2').innerText = `${(player2Time / 1000).toFixed(1)}s`;
+
+    document.getElementById('usedTime1').innerText = `     ${((player1Time - maxTime) / -1000).toFixed(1)}s`;
+    document.getElementById('usedTime2').innerText = `     ${((player2Time - maxTime)/ -1000).toFixed(1)}s`;
     
     // Verhindere Division durch 0
     const barHeightPlayer1 = maxTime > 0 ? (player1Time / maxTime * 100) : 0;
@@ -138,11 +141,54 @@ socket.onmessage = function (event) {
         // Aktualisiere die Anzeige
         updateDisplay();
     }
+
+    else if (data.action === 'turn_time') {
+        console.log('Zugzeiten empfangen:', data);
+        
+        // Array-Verarbeitung für Spieler 1
+        if (data.player1_times && data.player1_times.length > 0) {
+            const reversedP1 = [...data.player1_times].reverse(); // Kopie erstellen und umdrehen
+            const avg1 = calculateAverage(data.player1_times);
+            
+            document.getElementById('averageTime1').innerText = 
+                `  ${(avg1/ 1000).toFixed(1)} s`;
+
+            document.getElementById('counts1').innerText = 
+            `  ${data.player1_times.length}`;
+            
+            document.getElementById('timeList1').innerText = 
+                reversedP1.map(t => `${(t/1000).toFixed(1)} s`).join('\n');
+        }
+    
+        // Array-Verarbeitung für Spieler 2
+        if (data.player2_times && data.player2_times.length > 0) {
+            const reversedP2 = [...data.player2_times].reverse(); // Kopie erstellen und umdrehen
+            const avg2 = calculateAverage(data.player2_times);
+            
+            document.getElementById('averageTime2').innerText = 
+                `  ${(avg2/ 1000).toFixed(1)} s`;
+
+            document.getElementById('counts2').innerText = 
+                `  ${data.player2_times.length}`;
+                
+            document.getElementById('timeList2').innerText = 
+                reversedP2.map(t => `${(t/1000).toFixed(1)} s`).join('\n');
+        }
+    }
+    
+
     
     else if (data.message) {
         console.log("Nachricht vom Server:", data.message);
     }
 };
+
+// Hilfsfunktion für Durchschnittsberechnung
+function calculateAverage(timesArray) {
+    if (!timesArray || timesArray.length === 0) return 0;
+    const sum = timesArray.reduce((a, b) => a + b, 0);
+    return Math.round(sum / timesArray.length);
+}
 
 
 

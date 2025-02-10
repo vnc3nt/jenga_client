@@ -10,7 +10,7 @@
 #include "esp_wifi.h"
 #include "protocol_examples_common.h"
 #include "lwip/sockets.h"
-#include <esp_https_server.h>
+#include <esp_http_server.h>
 #include "keep_alive.h"
 #include "sdkconfig.h"
 #include "mdns.h"
@@ -21,68 +21,87 @@
 
 
 
-// Definiere ein Event-Bit, das anzeigt, dass eine Verbindung hergestellt wurde
 #define WIFI_CONNECTED_BIT BIT0
+static const char *TAG = "wss_echo_server";
 
+// Handle für die Event-Gruppe
 static EventGroupHandle_t s_wifi_event_group;
 
-static void event_handler(void *arg, esp_event_base_t event_base,
-                          int32_t event_id, void *event_data)
+/**
+ * @brief Task, der nach einer Verzögerung (5 s) versucht, die WiFi-Verbindung wiederherzustellen.
+ */
+static void wifi_reconnect_task(void *pvParameter)
+{
+    vTaskDelay(pdMS_TO_TICKS(5000));
+    ESP_LOGI(TAG, "Versuche erneut, eine Verbindung herzustellen...");
+    esp_wifi_connect();
+    vTaskDelete(NULL);
+}
+
+/**
+ * @brief Event-Handler für WiFi- und IP-Events
+ */
+static void wifi_event_handler(void *arg, esp_event_base_t event_base,
+                               int32_t event_id, void *event_data)
 {
     if (event_base == WIFI_EVENT) {
         switch (event_id) {
             case WIFI_EVENT_STA_START:
+                ESP_LOGI(TAG, "WiFi-STA gestartet. Versuche zu verbinden...");
                 esp_wifi_connect();
                 break;
             case WIFI_EVENT_STA_DISCONNECTED:
-                ESP_LOGI("WIFI_STA", "Verbindung getrennt. Wiederverbinden in 5 Sekunden...");
+                ESP_LOGW(TAG, "WiFi-Verbindung verloren.");
                 xEventGroupClearBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
-                // Starte einen neuen Task, der nach einer Verzögerung die Verbindung herstellt
-                xTaskCreate(wifi_reconnect_task, "wifi_reconnect", 2048, NULL, tskIDLE_PRIORITY, NULL);
+                /* Nach 5 Sekunden den Reconnect-Versuch starten */
+                xTaskCreate(wifi_reconnect_task, "wifi_reconnect_task", 2048, NULL, tskIDLE_PRIORITY, NULL);
                 break;
             default:
                 break;
         }
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t *event = (ip_event_got_ip_t *) event_data;
-        ESP_LOGI("WIFI_STA", "Erhaltene IP: " IPSTR, IP2STR(&event->ip_info.ip));
+        ESP_LOGI(TAG, "Erhaltene IP: " IPSTR, IP2STR(&event->ip_info.ip));
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
     }
 }
 
+/**
+ * @brief Initialisiert WiFi im STA-Modus und verbindet mit dem konfigurierten Access Point.
+ */
 static void wifi_init_sta(void)
 {
-    // Erstelle die Event-Gruppe
+    /* Erstelle die Event-Gruppe */
     s_wifi_event_group = xEventGroupCreate();
 
-    // Initialisiere netif und das Standard-Event-Loop
+    /* Netzwerkschnittstellen initialisieren und Default-Event-Loop erstellen */
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
-    
-    // Erstelle ein Standard-WiFi-STA-Interface
+
+    /* Erstelle ein Standard-WiFi-STA-Interface */
     esp_netif_create_default_wifi_sta();
-    
-    // Initialisiere die WiFi-Konfiguration
+
+    /* WiFi initialisieren */
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-    
-    // Registriere Event-Handler für WiFi- und IP-Events
+
+    /* Event-Handler für WiFi und IP-Events registrieren */
     ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
                                                         ESP_EVENT_ANY_ID,
-                                                        &event_handler,
+                                                        wifi_event_handler,
                                                         NULL,
                                                         NULL));
     ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT,
                                                         IP_EVENT_STA_GOT_IP,
-                                                        &event_handler,
+                                                        wifi_event_handler,
                                                         NULL,
                                                         NULL));
-    
-    // Konfiguriere den STA-Modus mit SSID und Passwort
+
+    /* WiFi-Konfiguration mit deinen Zugangsdaten */
     wifi_config_t wifi_config = {
         .sta = {
-            .ssid = "FRITZ!Box Gastzugang KF",
-            .password = "IOE8N9PeUTiH7FQIG8yx",
+            .ssid = "ImmerDieseNamen",
+            .password = "3946060518250164",
             .threshold.authmode = WIFI_AUTH_WPA2_PSK,
             .pmf_cfg = {
                 .capable = true,
@@ -90,34 +109,47 @@ static void wifi_init_sta(void)
             },
         },
     };
-    
-    // Setze den WiFi-Modus auf STA und wende die Konfiguration an
+
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
-    
-    // Starte das WiFi
     ESP_ERROR_CHECK(esp_wifi_start());
-    
-    ESP_LOGI("WIFI_STA", "WiFi im STA-Modus gestartet. Versuche Verbindung zu SSID: %s", "FRITZ!Box Gastzugang KF");
-    
-    // Warte blockierend, bis das Event "IP erhalten" gesetzt wurde
-    EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group, WIFI_CONNECTED_BIT,
-                                           pdFALSE, pdTRUE, portMAX_DELAY);
-    
+
+    ESP_LOGI(TAG, "WiFi im STA-Modus gestartet. Verbinde mit SSID: %s", wifi_config.sta.ssid);
+
+    /* Optional: Warten, bis die Verbindung steht */
+    EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group,
+                                           WIFI_CONNECTED_BIT,
+                                           pdFALSE,
+                                           pdTRUE,
+                                           portMAX_DELAY);
     if (bits & WIFI_CONNECTED_BIT) {
-        ESP_LOGI("WIFI_STA", "Verbindung erfolgreich hergestellt.");
+        ESP_LOGI(TAG, "Mit Access Point verbunden.");
+    } else {
+        ESP_LOGE(TAG, "Verbindung nicht hergestellt!");
     }
 }
 
-void wifi_reconnect_task(void *pvParameter)
+/**
+ * @brief Initialisiert den mDNS-Dienst, sodass der ESP32 unter viergewinnt1.local erreichbar ist.
+ */
+static void initialise_mdns(void)
 {
-    // Warte 5 Sekunden (5000 ms)
-    vTaskDelay(pdMS_TO_TICKS(5000));
-    ESP_LOGI("WIFI_STA", "Versuche erneut, eine Verbindung herzustellen...");
-    esp_wifi_connect();
-    // Task selbst löschen, nachdem er seine Arbeit erledigt hat
-    vTaskDelete(NULL);
+    esp_err_t err = mdns_init();
+    if (err) {
+        ESP_LOGE(TAG, "Fehler bei mdns_init: %d", err);
+        return;
+    }
+    /* Setze den Hostnamen auf "viergewinnt1" – so wird er unter viergewinnt1.local erreichbar */
+    mdns_hostname_set("viergewinnt1");
+    mdns_instance_name_set("ESP32 VierGewinnt");
+    ESP_LOGI(TAG, "mDNS-Dienst gestartet: viergewinnt1.local");
 }
+
+
+
+
+
+
 
 
 
@@ -133,7 +165,6 @@ struct async_resp_arg {
     int fd;
 };
 
-static const char *TAG = "wss_echo_server";
 static const size_t max_clients = 4;
 
 static esp_err_t ws_handler(httpd_req_t *req)
@@ -331,23 +362,17 @@ static httpd_handle_t start_wss_echo_server(void)
     httpd_handle_t server = NULL;
     ESP_LOGI(TAG, "Starting server");
 
-    httpd_ssl_config_t conf = HTTPD_SSL_CONFIG_DEFAULT();
-    conf.httpd.max_open_sockets = max_clients;
-    conf.httpd.global_user_ctx = keep_alive;
-    conf.httpd.open_fn = wss_open_fd;
-    conf.httpd.close_fn = wss_close_fd;
+    httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+    // Port auf 80 ändern
+    config.server_port = 80;
 
-    extern const unsigned char servercert_start[] asm("_binary_servercert_pem_start");
-    extern const unsigned char servercert_end[]   asm("_binary_servercert_pem_end");
-    conf.servercert = servercert_start;
-    conf.servercert_len = servercert_end - servercert_start;
+    config.max_open_sockets = max_clients;
+    config.global_user_ctx = keep_alive;
+    config.open_fn = wss_open_fd;
+    config.close_fn = wss_close_fd;
 
-    extern const unsigned char prvtkey_pem_start[] asm("_binary_prvtkey_pem_start");
-    extern const unsigned char prvtkey_pem_end[]   asm("_binary_prvtkey_pem_end");
-    conf.prvtkey_pem = prvtkey_pem_start;
-    conf.prvtkey_len = prvtkey_pem_end - prvtkey_pem_start;
+    esp_err_t ret = httpd_start(&server, &config);
 
-    esp_err_t ret = httpd_ssl_start(&server, &conf);
     if (ESP_OK != ret) {
         ESP_LOGI(TAG, "Error starting server!");
         return NULL;
@@ -411,7 +436,7 @@ static esp_err_t stop_wss_echo_server(httpd_handle_t server)
     // Stop keep alive thread
     wss_keep_alive_stop(httpd_get_global_user_ctx(server));
     // Stop the httpd server
-    return httpd_ssl_stop(server);
+    return httpd_stop(server);
 }
 
 static void disconnect_handler(void* arg, esp_event_base_t event_base,
@@ -422,7 +447,7 @@ static void disconnect_handler(void* arg, esp_event_base_t event_base,
         if (stop_wss_echo_server(*server) == ESP_OK) {
             *server = NULL;
         } else {
-            ESP_LOGE(TAG, "Failed to stop https server");
+            ESP_LOGE(TAG, "Failed to stop http server");
         }
     }
 }
@@ -510,6 +535,8 @@ void init_webserver(void) {
 
     // Initialize WiFi 
     wifi_init_sta();
+
+    initialise_mdns();
 
     // Start the WSS Server
     server = start_wss_echo_server();

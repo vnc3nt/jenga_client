@@ -76,7 +76,7 @@ img {
     align-items: flex-end; /* Säulen von unten ausrichten */
     justify-content: space-around;
     height: 75%; /* Gesamthöhe des Diagramms */
-    width: 65vw;
+    width: 90vw;
     border-bottom: 2px solid var(--text-color);
 }
   
@@ -87,6 +87,8 @@ img {
     height: 0px;
     width: 30%;
     background-color: rgba(0, 0, 255, 1);
+    margin-left: 1rem;
+    margin-right: 1rem;
     
     transition: height linear 0.5s; /* Animationsdauer */
     -webkit-transition: height 0.5s linear; /* Für ältere WebKit-Browser */
@@ -113,9 +115,57 @@ img {
     font-weight: bold;
     color: var(--bg-color);
     font-size: 1.75rem;
+    text-shadow: -1px 0 var(--text-color), 0 1px var(--text-color), 1px 0 var(--text-color), 0 -1px var(--text-color);
 }
 
 
 h1 {
     text-align: center;
+}
+
+
+.analysis {
+    width: 30%;
+    height: 100%;
+    padding: 1rem;
+    overflow-y: hidden;
+}
+
+#analysisPlayer1 {
+    left: -30%;
+}
+
+#analysisPlayer2 {
+    right: -30%;
+}
+
+#stats {
+    display: flex;
+    text-align: end;
+    ul {
+        list-style: none;
+        min-width: 5rem;
+    }
+}
+
+.analysisUsedTime {
+    text-align: center;
+    font-size: 2rem;
+    font-weight: bold;
+
+}
+
+.timeList {
+    text-align: end;
+    font-size: 1.3rem;
+    height: 78%;
+    overflow-y: scroll;
+}
+
+.analysisAverageTime {
+    font-size: 1.7rem;
+}
+
+.count{
+    font-size: 1.7rem;
 }

@@ -1,6 +1,6 @@
 #ifndef WEBSERVER_H
 #define WEBSERVER_H
-#include <esp_https_server.h>
+#include <esp_http_server.h>
 
 // Getter-Funktion für den WebSocket-Server-Handle
 httpd_handle_t get_webserver_handle(void);

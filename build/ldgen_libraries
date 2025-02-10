@@ -48,8 +48,6 @@
 /Users/vnc3nt/Documents/Code/VS-Code/ESP32/vier_gewinnt_client/build/esp-idf/vfs/libvfs.a
 /Users/vnc3nt/Documents/Code/VS-Code/ESP32/vier_gewinnt_client/build/esp-idf/lwip/liblwip.a
 /Users/vnc3nt/Documents/Code/VS-Code/ESP32/vier_gewinnt_client/build/esp-idf/esp_http_server/libesp_http_server.a
-/Users/vnc3nt/Documents/Code/VS-Code/ESP32/vier_gewinnt_client/build/esp-idf/esp-tls/libesp-tls.a
-/Users/vnc3nt/Documents/Code/VS-Code/ESP32/vier_gewinnt_client/build/esp-idf/esp_https_server/libesp_https_server.a
 /Users/vnc3nt/Documents/Code/VS-Code/ESP32/vier_gewinnt_client/build/esp-idf/nvs_flash/libnvs_flash.a
 /Users/vnc3nt/Documents/Code/VS-Code/ESP32/vier_gewinnt_client/build/esp-idf/esp_netif/libesp_netif.a
 /Users/vnc3nt/Documents/Code/VS-Code/ESP32/vier_gewinnt_client/build/esp-idf/esp_eth/libesp_eth.a
