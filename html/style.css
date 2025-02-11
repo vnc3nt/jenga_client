@@ -179,10 +179,13 @@ h1 {
 }
 
 #timeOutMessage {
+    position: relative;
+    text-align: center;
     display: none;
     font-size: 5rem;
     color: var(--text-color);
     z-index: 2;
+    top: 10vh;
 }
 
 #timeOutBackground {
@@ -196,9 +199,11 @@ h1 {
     z-index: 1;
 }
 
-#winner {
+#timeOutWinner {
+    position: relative;
+    text-align: center;
     display: none;
-    font-size: 3rem;
-    color: green;
+    font-size: 7.5rem;
     z-index: 2;
+    top: 15vh;
 }

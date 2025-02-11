@@ -27,10 +27,16 @@ async function styleCurrentPlayer(player) {
 
 async function timeOut(winner) {
     console.log('TimeOut!');
-    getElementById('timeOutMessage').style.display = `block`;
-    getElementById('timeOutBackground').style.display = `block`;
-    getElementById('timeOutWinner').innerText = `Spieler` + winner + `hat gewonnen!`;
-    getElementById('timeOutWinner').style.display = `block`;
+    document.getElementById('timeOutMessage').style.display = `block`;
+    document.getElementById('timeOutBackground').style.display = `block`;
+    document.getElementById('timeOutWinner').innerText = `Spieler `+ winner + ` hat gewonnen!`;
+    if(winner == "2") {
+        document.getElementById('timeOutWinner').style.color = red;
+    }
+    else {
+        document.getElementById('timeOutWinner').style.color = blue;
+    }
+    document.getElementById('timeOutWinner').style.display = `block`;
 }
 
 

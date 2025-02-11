@@ -40,7 +40,7 @@
 #define PULSE_DURATION           100
 #define START_ANIMATION_FACTOR   5
 #define SIGNAL_DELAY            500
-#define MAX_TIME                300000
+#define MAX_TIME                30000
 
 //Buttontiming
 static bool p1_pressed = false;
@@ -63,7 +63,6 @@ uint32_t max_time = MAX_TIME;
 uint32_t time_player_1 = MAX_TIME;
 uint32_t time_player_2 = MAX_TIME;
 static uint64_t last_millis = 0;
-static uint64_t signal_delay_start_time = 0;
 
 // Zugzeit-Speicher
 static uint32_t *player1_times = NULL;
@@ -263,7 +262,7 @@ static void start_signal_delay() {
         {
             player1_times = temp;
         
-             player1_times[p1_time_count++] = turn_time;
+            player1_times[p1_time_count++] = turn_time;
         }
         else
         {
@@ -323,7 +322,6 @@ static void start_signal_delay() {
 
     is_in_signal_delay = true;
     need_to_send_signal = true;
-    signal_delay_start_time = esp_timer_get_time() / 1000;
     gpio_set_level(PAUSE_LED_PIN, 1);
     if (pause_event == 2) {
         pause_game();
@@ -332,6 +330,7 @@ static void start_signal_delay() {
     else {
         vTaskDelay(pdMS_TO_TICKS(SIGNAL_DELAY));
 
+        last_millis = esp_timer_get_time() / 1000;
         
         sendSignal();
     }
