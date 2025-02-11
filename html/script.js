@@ -30,11 +30,11 @@ async function timeOut(winner) {
     document.getElementById('timeOutMessage').style.display = `block`;
     document.getElementById('timeOutBackground').style.display = `block`;
     document.getElementById('timeOutWinner').innerText = `Spieler `+ winner + ` hat gewonnen!`;
-    if(winner == "2") {
-        document.getElementById('timeOutWinner').style.color = red;
+    if(winner === "2") {
+        document.getElementById('timeOutWinner').style.color = "red";
     }
     else {
-        document.getElementById('timeOutWinner').style.color = blue;
+        document.getElementById('timeOutWinner').style.color = "blue";
     }
     document.getElementById('timeOutWinner').style.display = `block`;
 }
@@ -217,9 +217,20 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 
+//TimeUp
+document.addEventListener('DOMContentLoaded', () => {
+    if (player1Time <= 0.5) {
+        player1Time = 0;
+        timeOut("2");        
+    }
+    else if (player2Time <= 0.5) {
+        player2Time = 0;
+        timeOut("1");        
+    }
+});
+
 
 // DARK MODE
-
 
 document.addEventListener('DOMContentLoaded', () => {
     let stored = localStorage.getItem('theme'); // 'dark', 'light' oder null
