@@ -40,7 +40,7 @@
 #define PULSE_DURATION           100
 #define START_ANIMATION_FACTOR   5
 #define SIGNAL_DELAY            500
-#define MAX_TIME                30000
+#define MAX_TIME                300000
 
 //Buttontiming
 static bool p1_pressed = false;
