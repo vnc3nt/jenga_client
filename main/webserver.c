@@ -1,6 +1,7 @@
 #include "webserver.h"
 
 #include <esp_event.h>
+#include "driver/gpio.h"
 #include <esp_log.h>
 #include <esp_system.h>
 #include <nvs_flash.h>
@@ -19,23 +20,42 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 
-
-
 #define WIFI_CONNECTED_BIT BIT0
+
+
 static const char *TAG = "wss_echo_server";
+
+static bool already_reconnecting = false;
+
+
 
 // Handle für die Event-Gruppe
 static EventGroupHandle_t s_wifi_event_group;
 
+
+
 /**
- * @brief Task, der nach einer Verzögerung (5 s) versucht, die WiFi-Verbindung wiederherzustellen.
+ * @brief Task, der den Verbindungsstatus anzeigt und die Power-LED blinken lässt,
+ * solange keine WLAN-Verbindung besteht.
  */
 static void wifi_reconnect_task(void *pvParameter)
 {
-    vTaskDelay(pdMS_TO_TICKS(5000));
-    ESP_LOGI(TAG, "Versuche erneut, eine Verbindung herzustellen...");
-    esp_wifi_connect();
+    uint32_t led_state = gpio_get_level(POWER_LED_PIN);
+
+    while ((xEventGroupGetBits(s_wifi_event_group) & WIFI_CONNECTED_BIT) == 0) {
+        // LED blinken lassen
+        led_state = !led_state;
+        esp_wifi_connect();
+        gpio_set_level(POWER_LED_PIN, led_state);
+        ESP_LOGI(TAG, "Versuche erneut, eine Verbindung herzustellen...");
+        vTaskDelay(pdMS_TO_TICKS(500)); // 500 ms an, 500 ms aus
+    }
+
+    // Wenn die Verbindung hergestellt wurde, leuchtet die LED dauerhaft
+    gpio_set_level(POWER_LED_PIN, 1);
+    ESP_LOGI(TAG, "WLAN-Verbindung hergestellt. Power-LED leuchtet dauerhaft.");
     vTaskDelete(NULL);
+    already_reconnecting = false;
 }
 
 /**
@@ -51,10 +71,14 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
                 esp_wifi_connect();
                 break;
             case WIFI_EVENT_STA_DISCONNECTED:
+                if(already_reconnecting){
+                    break;
+                }
+                already_reconnecting = true;
                 ESP_LOGW(TAG, "WiFi-Verbindung verloren.");
                 xEventGroupClearBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
                 /* Nach 5 Sekunden den Reconnect-Versuch starten */
-                xTaskCreate(wifi_reconnect_task, "wifi_reconnect_task", 2048, NULL, tskIDLE_PRIORITY, NULL);
+                xTaskCreate(wifi_reconnect_task, "wifi_reconnect_task", 2048, NULL, 1, NULL);
                 break;
             default:
                 break;
@@ -100,19 +124,25 @@ static void wifi_init_sta(void)
     /* WiFi-Konfiguration mit deinen Zugangsdaten */
     wifi_config_t wifi_config = {
         .sta = {
-            .ssid = "Smarty",
-            .password = "irgendwas",
+            .ssid = "ImmerDieseNamen24",
+            .password = "3946060518250164",
             .threshold.authmode = WIFI_AUTH_WPA2_PSK,
-            .pmf_cfg = {
-                .capable = true,
-                .required = false
-            },
         },
     };
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
+
+    // Power-LED für Blinken konfigurieren
+    gpio_config_t io_conf = {
+        .pin_bit_mask = (1ULL << POWER_LED_PIN),
+        .mode = GPIO_MODE_OUTPUT,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE
+    };
+    gpio_config(&io_conf);
 
     ESP_LOGI(TAG, "WiFi im STA-Modus gestartet. Verbinde mit SSID: %s", wifi_config.sta.ssid);
 
@@ -140,9 +170,9 @@ static void initialise_mdns(void)
         return;
     }
     /* Setze den Hostnamen auf "viergewinnt1" – so wird er unter viergewinnt1.local erreichbar */
-    mdns_hostname_set("viergewinnt1");
+    mdns_hostname_set("viergewinnt3");
     mdns_instance_name_set("ESP32 VierGewinnt");
-    ESP_LOGI(TAG, "mDNS-Dienst gestartet: viergewinnt1.local");
+    ESP_LOGI(TAG, "mDNS-Dienst gestartet: viergewinnt3.local");
 }
 
 

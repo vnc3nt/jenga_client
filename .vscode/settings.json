@@ -1,6 +1,6 @@
 {
     "C_Cpp.intelliSenseEngine": "default",
-    "idf.port": "/dev/tty.usbserial-110",
+    "idf.port": "/dev/tty.usbserial-0001",
     "idf.adapterTargetName": "esp32",
     "idf.openOcdConfigs": [
     "board/esp32-wrover-kit-3.3v.cfg"
@@ -11,7 +11,8 @@
     "files.associations": {
         "keep_alive.h": "c",
         "esp_https_server.h": "c",
-        "protocol_examples_common.h": "c"
+        "protocol_examples_common.h": "c",
+        "sdkconfig.h": "c"
     },
     "todo-tree.tree.showBadges": false,
 

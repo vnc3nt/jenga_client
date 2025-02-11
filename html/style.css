@@ -30,6 +30,7 @@
 }
 
 
+
 body {
     background-color: var(--bg-color);
     color: var(--text-color);
@@ -140,11 +141,18 @@ h1 {
 }
 
 #stats {
-    display: flex;
+    display: block;
     text-align: end;
     ul {
         list-style: none;
         min-width: 5rem;
+    }
+}
+
+@media (min-width: 1200px) {
+    #stats {
+        display: flex;
+        padding: 0;
     }
 }
 
@@ -168,4 +176,29 @@ h1 {
 
 .count{
     font-size: 1.7rem;
+}
+
+#timeOutMessage {
+    display: none;
+    font-size: 5rem;
+    color: var(--text-color);
+    z-index: 2;
+}
+
+#timeOutBackground {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1;
+}
+
+#winner {
+    display: none;
+    font-size: 3rem;
+    color: green;
+    z-index: 2;
 }

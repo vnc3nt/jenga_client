@@ -25,6 +25,14 @@ async function styleCurrentPlayer(player) {
     }
 }
 
+async function timeOut(winner) {
+    console.log('TimeOut!');
+    getElementById('timeOutMessage').style.display = `block`;
+    getElementById('timeOutBackground').style.display = `block`;
+    getElementById('timeOutWinner').innerText = `Spieler` + winner + `hat gewonnen!`;
+    getElementById('timeOutWinner').style.display = `block`;
+}
+
 
 // Initialisiere die Zeiten von /time
 async function initializeTime() {
@@ -81,14 +89,17 @@ function startTimer(player) {
     timerInterval = setInterval(() => {
         if (currentPlayer === 1) {
             player1Time -= 100; // Reduziere um 100ms
-            if (player1Time <= 0) {
+            if (player1Time <= 0.5) {
                 player1Time = 0;
+                timeOut("2");
                 stopTimer(); // Stoppe den Timer, wenn die Zeit abgelaufen ist
+                
             }
         } else if (currentPlayer === 2) {
             player2Time -= 100; // Reduziere um 100ms
-            if (player2Time <= 0) {
+            if (player2Time <= 0.5) {
                 player2Time = 0;
+                timeOut("1");
                 stopTimer(); // Stoppe den Timer, wenn die Zeit abgelaufen ist
             }
         }

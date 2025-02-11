@@ -15,6 +15,8 @@
 #include <cJSON.h>
 #include <esp_sleep.h>
 
+#include "global_vars.h"
+
 // Dauerspeicher
 #include "nvs_flash.h"
 #include "nvs.h"
@@ -32,7 +34,7 @@
 #define LED1_PIN           25
 #define LED2_PIN           26
 #define PAUSE_LED_PIN      13
-#define POWER_LED_PIN      2
+
 
 // Timing Konstanten
 #define PULSE_DURATION           100
@@ -582,15 +584,18 @@ void app_main(void) {
     init_webserver();
     
     
-    while (server_handle == NULL)
+    if (server_handle == NULL)
     {        
         server_handle = get_webserver_handle();
         if (server_handle == NULL)
         {
             ESP_LOGE("main", "Server-Handle ist NULL!");
         }
+        else {
+            ESP_LOGI("main", "Server-Handle erhalten!");
+        }
     }
-    ESP_LOGI("main", "Server-Handle erhalten!");
+    
 
 
     // GPIO Konfiguration
@@ -751,33 +756,47 @@ void app_main(void) {
 
         vTaskDelay(pdMS_TO_TICKS(10));
     }
-    
-    
-    
 
     game_has_started = true;
+
+
+    //MAINGAME
     while(1) {
-        // Handle resume after pause
+
+        //serverhandle after reconnection
+        if (server_handle == NULL)
+        {        
+            server_handle = get_webserver_handle();
+            if (server_handle == NULL)
+            {
+                ESP_LOGE("main", "Server-Handle ist NULL!");
+            }
+            else {
+                ESP_LOGI("main", "Server-Handle erhalten!");
+            }
+        }
+
+        // resume after pause
         if (pause_event == 1) {
             resume_game();
             pause_event = 0; // Event zurücksetzen
         }
 
         
-        // Handle buttonEvent
+        // Button Input
         if (button_event != 0) {
             handle_signal(button_event);
             button_event = 0;  // Event zurücksetzen
         }
         
-        
+        // Time check
         update_time();
         if (time_player_1 <= 0 || time_player_2 <= 0)
         {
             time_is_up();
         }
         
-        
+        // Poweroff
         check_long_press(); // Überprüfen Sie auf langen Tastendruck
 
         vTaskDelay(pdMS_TO_TICKS(10));

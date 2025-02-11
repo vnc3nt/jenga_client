@@ -1,4 +1,6 @@
 #ifndef GLOBAL_VARS_H
+    #define POWER_LED_PIN      2
+
     #define GLOBAL_VARS_H
 
     extern uint32_t time_player_1;
