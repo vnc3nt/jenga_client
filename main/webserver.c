@@ -291,7 +291,7 @@ static const httpd_uri_t ws = {
 
 static void send_hello(void *arg)
 {
-    static const char * data = "Hello client :)";
+    static const char * data = "Hello client :)   Don't go to sleeeep!";
     struct async_resp_arg *resp_arg = arg;
     httpd_handle_t hd = resp_arg->hd;
     int fd = resp_arg->fd;
