@@ -79,7 +79,7 @@ img {
     justify-content: space-around;
     height: 75%; /* Gesamthöhe des Diagramms */
     width: 90vw;
-    border-bottom: 2px solid var(--text-color);
+    border-bottom: 2px solid rgb(var(--text-color));
 }
   
 .bar {

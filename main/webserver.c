@@ -160,7 +160,7 @@ static void wifi_init_sta(void)
 }
 
 /**
- * @brief Initialisiert den mDNS-Dienst, sodass der ESP32 unter viergewinnt1.local erreichbar ist.
+ * @brief Initialisiert den mDNS-Dienst, sodass der ESP32 unter viergewinnt3.local erreichbar ist.
  */
 static void initialise_mdns(void)
 {
@@ -169,7 +169,7 @@ static void initialise_mdns(void)
         ESP_LOGE(TAG, "Fehler bei mdns_init: %d", err);
         return;
     }
-    /* Setze den Hostnamen auf "viergewinnt1" – so wird er unter viergewinnt1.local erreichbar */
+    /* Setze den Hostnamen auf "viergewinnt1" – so wird er unter viergewinnt3.local erreichbar */
     mdns_hostname_set("viergewinnt3");
     mdns_instance_name_set("ESP32 VierGewinnt");
     ESP_LOGI(TAG, "mDNS-Dienst gestartet: viergewinnt3.local");

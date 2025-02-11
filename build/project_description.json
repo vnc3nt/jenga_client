@@ -1,7 +1,7 @@
 {
     "version":            "1.2",
     "project_name":       "vier_gewinnt_client",
-    "project_version":    "f889951-dirty",
+    "project_version":    "35f4e05-dirty",
     "project_path":       "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/vier_gewinnt_client",
     "idf_path":           "/Users/vnc3nt/esp/esp-idf",
     "build_dir":          "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/vier_gewinnt_client/build",
