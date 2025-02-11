@@ -55,6 +55,7 @@ button {
     transition: background-color 0.3s;
     box-shadow: -3px 3px 5px 1px var(--bg-blur);
     z-index: 3;
+    background-color: var(--bg-color);
 }
 
 button:hover {
