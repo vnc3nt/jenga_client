@@ -68,6 +68,17 @@ async function initializeTime() {
     if (!is_paused) {
         startTimer(currentPlayer);
     }
+
+
+    //TimeIsUp
+    if (player1Time <= 0.5) {
+        player1Time = 0;
+        timeOut("2");        
+    }
+    else if (player2Time <= 0.5) {
+        player2Time = 0;
+        timeOut("1");        
+    }
 }
 
 // Aktualisiere die Anzeige auf der Website
@@ -216,18 +227,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById("espIp").innerText = window.location.hostname;
 });
 
-
-//TimeUp
-document.addEventListener('DOMContentLoaded', () => {
-    if (player1Time <= 0.5) {
-        player1Time = 0;
-        timeOut("2");        
-    }
-    else if (player2Time <= 0.5) {
-        player2Time = 0;
-        timeOut("1");        
-    }
-});
 
 
 // DARK MODE

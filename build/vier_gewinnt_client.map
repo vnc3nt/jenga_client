@@ -41550,35 +41550,36 @@ LOAD /Users/vnc3nt/.espressif/tools/xtensa-esp-elf/esp-14.2.0_20241119/xtensa-es
                 0x3f4123d0                _binary_index_html_end
                 0x3f4123d0                index_html_length
  .rodata.embedded
-                0x3f4123d4      0xf82 esp-idf/main/libmain.a(style.css.S.obj)
+                0x3f4123d4      0xfb4 esp-idf/main/libmain.a(style.css.S.obj)
                 0x3f4123d4                style_css
                 0x3f4123d4                _binary_style_css_start
-                0x3f413352                _binary_style_css_end
-                0x3f413352                style_css_length
+                0x3f413384                _binary_style_css_end
+                0x3f413384                style_css_length
  .rodata.embedded
-                0x3f413356     0x223f esp-idf/main/libmain.a(script.js.S.obj)
-                0x3f413356                script_js
-                0x3f413356                _binary_script_js_start
-                0x3f415591                script_js_length
-                0x3f415591                _binary_script_js_end
+                0x3f413388     0x220c esp-idf/main/libmain.a(script.js.S.obj)
+                0x3f413388                script_js
+                0x3f413388                _binary_script_js_start
+                0x3f415590                script_js_length
+                0x3f415590                _binary_script_js_end
  .rodata.embedded
-                0x3f415595     0x3a8f esp-idf/main/libmain.a(sun-moon.png.S.obj)
-                0x3f415595                sun_moon_png
-                0x3f415595                _binary_sun_moon_png_start
-                0x3f419020                sun_moon_png_length
-                0x3f419020                _binary_sun_moon_png_end
+                0x3f415594     0x3a8f esp-idf/main/libmain.a(sun-moon.png.S.obj)
+                0x3f415594                sun_moon_png
+                0x3f415594                _binary_sun_moon_png_start
+                0x3f41901f                sun_moon_png_length
+                0x3f41901f                _binary_sun_moon_png_end
  .rodata.print_string_ptr.str1.4
-                0x3f419024        0xa esp-idf/json/libjson.a(cJSON.c.obj)
+                0x3f419023        0xa esp-idf/json/libjson.a(cJSON.c.obj)
  .rodata.print_number.str1.4
-                0x3f419024       0x1f esp-idf/json/libjson.a(cJSON.c.obj)
+                0x3f419023       0x1f esp-idf/json/libjson.a(cJSON.c.obj)
  .rodata.print_value.str1.4
-                0x3f419024        0xd esp-idf/json/libjson.a(cJSON.c.obj)
+                0x3f419023        0xd esp-idf/json/libjson.a(cJSON.c.obj)
  .rodata.esp_netif_from_preset_if.str1.4
-                0x3f419024       0x24 esp-idf/espressif__mdns/libespressif__mdns.a(mdns.c.obj)
+                0x3f419023       0x24 esp-idf/espressif__mdns/libespressif__mdns.a(mdns.c.obj)
  .rodata._mdns_add_browse_result.str1.4
-                0x3f419024       0x4d esp-idf/espressif__mdns/libespressif__mdns.a(mdns.c.obj)
+                0x3f419023       0x4d esp-idf/espressif__mdns/libespressif__mdns.a(mdns.c.obj)
  .rodata._mdns_append_host_question.str1.4
-                0x3f419024        0x6 esp-idf/espressif__mdns/libespressif__mdns.a(mdns.c.obj)
+                0x3f419023        0x6 esp-idf/espressif__mdns/libespressif__mdns.a(mdns.c.obj)
+ *fill*         0x3f419023        0x1 
  .rodata        0x3f419024       0x18 esp-idf/espressif__mdns/libespressif__mdns.a(mdns.c.obj)
  .rodata._mdns_name_is_discovery.str1.4
                 0x3f41903c       0x19 esp-idf/espressif__mdns/libespressif__mdns.a(mdns.c.obj)

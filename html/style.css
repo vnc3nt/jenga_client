@@ -1,12 +1,12 @@
 
 :root {
     --bg-color-light: #F5F5F7;
-    --text-color-light: rgb(0, 0, 0);
+    --text-color-light: 0, 0, 0;
     --bg-blur-light: white;
     --light-hover: #cfcfcf;
 
     --bg-color-dark: #202020;
-    --text-color-dark: rgb(255, 255, 255);
+    --text-color-dark: 255, 255, 255;
     --bg-blur-dark: #101010;
     --dark-hover: #2f2f2f;
 }
@@ -53,7 +53,8 @@ button {
     align-items: center;
     justify-content: center;
     transition: background-color 0.3s;
-    box-shadow: -3px 3px 5px 1px var(--bg-blur)
+    box-shadow: -3px 3px 5px 1px var(--bg-blur);
+    z-index: 3;
 }
 
 button:hover {
@@ -183,9 +184,10 @@ h1 {
     text-align: center;
     display: none;
     font-size: 5rem;
-    color: var(--text-color);
     z-index: 2;
     top: 15vh;
+    color: white;
+    text-shadow: 5px 5px rgba(var(--text-color), 0.1);
 }
 
 #timeOutBackground {
