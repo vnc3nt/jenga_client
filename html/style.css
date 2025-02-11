@@ -13,14 +13,14 @@
 
 :root[data-theme="light"] {
     --bg-color: var(--bg-color-light);
-    --text-color: rgb(var(--text-color-light));
+    --text-color: var(--text-color-light);
     --bg-blur: var(--bg-blur-light);
     --hover: var(--light-hover);
 }
 
 :root[data-theme="dark"] {
     --bg-color: var(--bg-color-dark);
-    --text-color: rgb(var(--text-color-dark));
+    --text-color: var(--text-color-dark);
     --bg-blur: var(--bg-blur-dark);
     --hover: var(--dark-hover);
     

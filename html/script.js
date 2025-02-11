@@ -29,7 +29,7 @@ async function timeOut(winner) {
     console.log('TimeOut!');
     document.getElementById('timeOutMessage').style.display = `block`;
     document.getElementById('timeOutBackground').style.display = `block`;
-    document.getElementById('timeOutWinner').innerText = `Spieler `+ winner + ` hat gewonnen!`;
+    document.getElementById('timeOutWinner').innerHTML = `Spieler `+ winner + ` hat ge&shy;wonnen!`;
     if(winner === "2") {
         document.getElementById('timeOutWinner').style.color = "red";
     }
