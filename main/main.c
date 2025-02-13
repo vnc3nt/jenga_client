@@ -36,6 +36,7 @@
 #define PAUSE_LED_PIN      13
 
 
+
 // Timing Konstanten
 #define PULSE_DURATION           100
 #define START_ANIMATION_FACTOR   5
