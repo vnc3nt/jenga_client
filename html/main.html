@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jenga Master</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        
+        <!-- Main Page -->
+        <div id="mainPage" class="container">
+            <!-- Header -->
+            <div class="header">
+                <!-- Settings Button (Left) -->
+                <!-- Hier sicherstellen, dass die ID 'settingsBtn' vorhanden ist -->
+                <button id="settingsBtn" class="settings-toggle" aria-label="Settings">
+                    <svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M12 1v6m0 6v6m5.2-13.2l-4.2 4.2m0 6l-4.2 4.2M23 12h-6m-6 0H1m18.2-5.2l-4.2 4.2m0 6l-4.2 4.2"></path>
+                    </svg>
+                </button>
+
+                <!-- Theme Toggle (Right) -->
+                <button id="themeToggle" class="theme-toggle" aria-label="Toggle theme">
+                    <svg id="sunIcon" class="icon sun-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                    <svg id="moonIcon" class="icon moon-icon hidden" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                </button>
+
+                <!-- Mode Switch (Center) - NEU: Toggle Switch -->
+                <div class="mode-switch-container">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="modeToggle">
+                        <span class="slider round">
+                            <span class="label-text label-left">Countdown</span>
+                            <span class="label-text label-right">Count up</span>
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Main Content Grid -->
+            <div class="main-content">
+                <!-- Leaderboard (Left) -->
+                <div class="leaderboard-container">
+                    <h3 class="leaderboard-title">Leaderboard</h3>
+                    <div id="leaderboardList" class="leaderboard-list">
+                        <!-- Items will be injected via JS -->
+                        <div class="leaderboard-item">
+                            <div class="leaderboard-info" style="text-align: center; color: #6b7280;">Lade Daten...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Timer (Center) -->
+                <div class="timer-container">
+                    <div id="timeDisplay" class="time-display editable">
+                        00:00
+                    </div>
+                    
+                    <!-- Hidden Input for Editing -->
+                    <input type="number" id="timeInput" class="time-input hidden" placeholder="Sekunden">
+
+                    <!-- Progress Bar -->
+                    <div id="progressContainer" class="progress-container">
+                        <div class="progress-bar">
+                            <div id="progressFill" class="progress-fill" style="width: 100%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Play/Pause Button -->
+                    <button id="playPauseBtn" class="play-pause-btn">
+                        <svg id="playIcon" class="icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                        </svg>
+                        <svg id="pauseIcon" class="icon hidden" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="6" y="4" width="4" height="16"></rect>
+                            <rect x="14" y="4" width="4" height="16"></rect>
+                        </svg>
+                        <span id="playPauseText">Play</span>
+                    </button>
+                </div>
+
+                <!-- Counter (Right) -->
+                <div class="counter-container">
+                    <h3 class="counter-title">Züge</h3>
+                    <div id="counterValue" class="counter-value">0</div>
+                    <div class="counter-buttons">
+                        <button id="decrementBtn" class="counter-btn decrement-btn" disabled>−</button>
+                        <button id="incrementBtn" class="counter-btn increment-btn">+</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Config Page -->
+        <div id="configPage" class="container hidden">
+            <div class="header">
+                <button id="backBtn" class="settings-toggle" aria-label="Back">
+                    <svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="19" y1="12" x2="5" y2="12"></line>
+                        <polyline points="12 19 5 12 12 5"></polyline>
+                    </svg>
+                </button>
+                
+                <button id="themeToggleConfig" class="theme-toggle" aria-label="Toggle theme">
+                    <svg id="sunIconConfig" class="icon sun-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                    <svg id="moonIconConfig" class="icon moon-icon hidden" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                </button>
+
+                <div class="config-header-title">
+                    <h1 class="config-title">Konfiguration</h1>
+                </div>
+            </div>
+
+            <div class="config-content">
+                <div class="wifi-section">
+                    <h2 class="section-title">WLAN Einstellungen</h2>
+                    <div class="wifi-list">
+                        <div class="wifi-item">
+                            <div class="wifi-info">
+                                <span id="wifiSsid" class="wifi-ssid">MeinWLAN</span>
+                                <span class="wifi-meta">Verbunden</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Time Modal -->
+        <div id="timeModal" class="modal hidden">
+            <div class="modal-content">
+                <h3 class="modal-title">Zeit bearbeiten</h3>
+                <div class="form-group">
+                    <label>Zeit in Sekunden</label>
+                    <input type="number" id="modalTimeInput" class="form-input" placeholder="Sekunden">
+                </div>
+                <div class="modal-actions">
+                    <button id="modalCancelBtn" class="btn btn-secondary">Abbrechen</button>
+                    <button id="modalSaveBtn" class="btn btn-primary">Speichern</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    <script src="main.js"></script>
+</body>
+</html>

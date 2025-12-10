@@ -1,213 +1,771 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; transition: background-color 0.3s, color 0.3s; }
+body.dark { background-color: #111827; color: #ffffff; }
 
-:root {
-    --bg-color-light: #F5F5F7;
-    --text-color-light: 0,0,0;
-    --bg-blur-light: white;
-    --light-hover: #cfcfcf;
+.container { min-height: 100vh; display: flex; flex-direction: column; }
 
-    --bg-color-dark: #202020;
-    --text-color-dark: 255,255,255;
-    --bg-blur-dark: #101010;
-    --dark-hover: #2f2f2f;
-}
+/* Header Area */
+.header { padding: 1.5rem; position: relative; display: flex; justify-content: center; align-items: center; }
+.header-controls { position: absolute; top: 1.5rem; right: 1.5rem; display: flex; gap: 0.5rem; }
 
-:root[data-theme="light"] {
-    --bg-color: var(--bg-color-light);
-    --text-color: var(--text-color-light);
-    --bg-blur: var(--bg-blur-light);
-    --hover: var(--light-hover);
-}
-
-:root[data-theme="dark"] {
-    --bg-color: var(--bg-color-dark);
-    --text-color: var(--text-color-dark);
-    --bg-blur: var(--bg-blur-dark);
-    --hover: var(--dark-hover);
-    
-    img {
-        filter: invert(1);
-    }
-}
-
-
-
-body {
-    background-color: var(--bg-color);
-    color: rgb(var(--text-color));
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-    margin: 0;
-    padding: 20px;
-    transition: background-color 0.3s, color 0.3s;
-}
-
-button {
+.settings-toggle {
     position: absolute;
-    right: 20px;
-    cursor: pointer;
-    height: 2.5rem;
-    width: 2.5rem;
-    background: none;
+    top: 1.5rem;
+    left: 1.5rem;
+    padding: 0.75rem;
     border: none;
-    border-radius: 50%;
+    border-radius: 0.5rem;
+    background-color: #e5e7eb;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    color: inherit;
+}
+
+body.dark .settings-toggle {
+    background-color: #374151;
+}
+
+.settings-toggle:hover {
+    background-color: #d1d5db;
+}
+
+body.dark .settings-toggle:hover {
+    background-color: #4b5563;
+}
+
+.theme-toggle {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    padding: 0.75rem;
+    border: none;
+    border-radius: 0.5rem;
+    background-color: #e5e7eb;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    color: inherit;
+}
+
+body.dark .theme-toggle {
+    background-color: #374151;
+}
+
+.theme-toggle:hover {
+    background-color: #d1d5db;
+}
+
+body.dark .theme-toggle:hover {
+    background-color: #4b5563;
+}
+
+.icon {
+    width: 24px;
+    height: 24px;
+}
+
+.sun-icon {
+    color: #f59e0b;
+}
+
+.moon-icon {
+    color: #374151;
+}
+
+body.dark .moon-icon {
+    color: #f59e0b;
+}
+
+/* Utility Classes für JS-Steuerung */
+.hidden {
+    display: none !important;
+}
+
+/* Modal Styles (falls noch nicht vorhanden) */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background-color 0.3s;
-    box-shadow: -3px 3px 5px 1px var(--bg-blur);
-    z-index: 3;
-    background-color: var(--bg-color);
+    z-index: 1000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
 }
 
-button:hover {
-    background-color: var(--hover);
+.modal.active {
+    opacity: 1;
+    pointer-events: auto;
 }
 
-img {
-    width: 1.8rem;
-    height: 1.8rem;
-    object-fit: contain;
+.modal-content {
+    background-color: #ffffff;
+    padding: 2rem;
+    border-radius: 0.75rem;
+    width: 90%;
+    max-width: 28rem;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
 }
 
-
-#chartContainer {
-    position: absolute;
-    left: 50%; /* Zentrierung*/
-    transform: translate(-50%, 0%); /* Zentrierung */
-
-    bottom: 15px;
-    display: flex;
-    align-items: flex-end; /* Säulen von unten ausrichten */
-    justify-content: space-around;
-    height: 75%; /* Gesamthöhe des Diagramms */
-    width: 90vw;
-    border-bottom: 2px solid rgb(var(--text-color));
-}
-  
-.bar {
-    border: 10px solid rgba(0, 0, 0, 0.45);
-    border-bottom: none;
-    border-radius: 15px 15px 0 0;
-    height: 0px;
-    width: 30%;
-    background-color: rgba(0, 0, 255, 1);
-    margin-left: 1rem;
-    margin-right: 1rem;
-    
-    transition: height linear 0.5s; /* Animationsdauer */
-    -webkit-transition: height 0.5s linear; /* Für ältere WebKit-Browser */
+body.dark .modal-content {
+    background-color: #1f2937;
 }
 
-#barPlayer2 {
-    background-color: rgba(255, 0, 0, 1);
+.modal-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 1.5rem;
 }
 
-
-.times {
-    position: relative;
-    display: flex;
-    justify-content: space-around;
-    top: -4.5rem;
-    right: -50%;
-    font-weight: bold;
-}
-.players {
-    position: static;
-    display: flex;
-    justify-content: space-around;
-    top: 2rem;
-    font-weight: bold;
-    color: var(--bg-color);
-    font-size: 1.75rem;
-    text-shadow: -1px 0 rgb(var(--text-color)), 0 1px rgb(var(--text-color)), 1px 0 rgb(var(--text-color)), 0 -1px rgb(var(--text-color));
+body.dark .modal-title {
+    color: #ffffff;
 }
 
-
-h1 {
-    text-align: center;
+.form-group {
+    margin-bottom: 1.25rem;
 }
 
-
-.analysis {
-    width: 30%;
-    height: 100%;
-    padding: 1rem;
-    overflow-y: hidden;
-}
-
-#analysisPlayer1 {
-    left: -30%;
-}
-
-#analysisPlayer2 {
-    right: -30%;
-}
-
-#stats {
+.form-group label {
     display: block;
-    text-align: end;
-    ul {
-        list-style: none;
-        min-width: 5rem;
-    }
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 0.5rem;
 }
 
-@media (min-width: 1200px) {
-    #stats {
-        display: flex;
-        padding: 0;
-    }
+body.dark .form-group label {
+    color: #d1d5db;
 }
 
-.analysisUsedTime {
-    text-align: center;
-    font-size: 2rem;
-    font-weight: bold;
-
+.form-input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    font-size: 1rem;
+    background-color: #ffffff;
+    color: #111827;
+    transition: border-color 0.2s;
 }
 
-.timeList {
-    text-align: end;
-    font-size: 1.3rem;
-    height: 78%;
-    overflow-y: scroll;
+body.dark .form-input {
+    background-color: #374151;
+    border-color: #4b5563;
+    color: #ffffff;
 }
 
-.analysisAverageTime {
-    font-size: 1.7rem;
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
 }
 
-.count{
-    font-size: 1.7rem;
+.btn {
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: background-color 0.2s;
 }
 
-#timeOutMessage {
-    position: relative;
-    text-align: center;
-    display: none;
-    font-size: 5rem;
-    z-index: 2;
-    top: 15vh;
+.btn-secondary {
+    background-color: #e5e7eb;
+    color: #374151;
+}
+
+body.dark .btn-secondary {
+    background-color: #374151;
+    color: #d1d5db;
+}
+
+.btn-primary {
+    background-color: #f97316;
     color: white;
-    text-shadow: 5px 5px rgba(var(--text-color), 0.1);
 }
 
-#timeOutBackground {
-    display: none;
+.btn-primary:hover {
+    background-color: #ea580c;
+}
+
+/* Main Content Grid */
+.main-content {
+    position: relative;
+    padding: 0 1.5rem;
+    margin-top: 3rem;
+    max-width: 80rem;
+    margin-left: auto;
+    margin-right: auto;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+}
+
+@media (min-width: 1024px) {
+    .main-content {
+        grid-template-columns: 250px 1fr 250px;
+        align-items: start;
+    }
+}
+
+/* Leaderboard */
+.leaderboard-container {
+    background-color: #f3f4f6;
+    padding: 1.5rem;
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    order: 3;
+}
+
+body.dark .leaderboard-container {
+    background-color: #1f2937;
+}
+
+@media (min-width: 1024px) {
+    .leaderboard-container {
+        order: 1;
+    }
+}
+
+.leaderboard-title {
+    color: #374151;
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+body.dark .leaderboard-title {
+    color: #d1d5db;
+}
+
+.leaderboard-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.leaderboard-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background-color: #ffffff;
+    border-radius: 0.5rem;
+    transition: transform 0.2s;
+}
+
+body.dark .leaderboard-item {
+    background-color: #374151;
+}
+
+.leaderboard-item:hover {
+    transform: translateX(4px);
+}
+
+.leaderboard-rank {
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f97316;
+    color: white;
+    border-radius: 50%;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.leaderboard-info {
+    flex: 1;
+}
+
+.leaderboard-name {
+    font-weight: 500;
+    color: #111827;
+    font-size: 0.875rem;
+}
+
+body.dark .leaderboard-name {
+    color: #ffffff;
+}
+
+.leaderboard-score {
+    color: #6b7280;
+    font-size: 0.75rem;
+}
+
+body.dark .leaderboard-score {
+    color: #9ca3af;
+}
+
+/* Timer Container */
+.timer-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    order: 1;
+}
+
+@media (min-width: 1024px) {
+    .timer-container {
+        order: 2;
+    }
+}
+
+.time-display {
+    font-size: 6rem;
+    color: #111827;
+    margin-bottom: 2rem;
+    font-weight: 300;
+    letter-spacing: -0.02em;
+    text-align: center;
+}
+
+body.dark .time-display {
+    color: #ffffff;
+}
+
+.time-display:not(.editable) {
+    cursor: default;
+}
+
+.time-display.editable {
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.time-display.editable:hover {
+    color: #f97316;
+}
+
+/* Progress Bar */
+.progress-container {
+    width: 100%;
+    max-width: 48rem;
+    margin-bottom: 2rem;
+}
+
+.progress-bar {
+    height: 1rem;
+    background-color: #e5e7eb;
+    border-radius: 9999px;
+    overflow: hidden;
+}
+
+body.dark .progress-bar {
+    background-color: #374151;
+}
+
+.progress-fill {
+    height: 100%;
+    background-color: #f97316;
+    transition: width 1s linear;
+}
+
+/* Play/Pause Button */
+.play-pause-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 2rem;
+    background-color: #f97316;
+    color: #ffffff;
+    border: none;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    font-size: 1rem;
+}
+
+.play-pause-btn:hover:not(:disabled) {
+    background-color: #ea580c;
+}
+
+.play-pause-btn:disabled {
+    background-color: #9ca3af;
+    cursor: not-allowed;
+}
+
+/* Counter */
+.counter-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    background-color: #f3f4f6;
+    padding: 2rem;
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    min-width: 200px;
+    order: 2;
+}
+
+body.dark .counter-container {
+    background-color: #1f2937;
+}
+
+@media (min-width: 1024px) {
+    .counter-container {
+        order: 3;
+    }
+}
+
+.counter-title {
+    color: #374151;
+    font-size: 1rem;
+    font-weight: 400;
+}
+
+body.dark .counter-title {
+    color: #d1d5db;
+}
+
+.counter-value {
+    font-size: 3rem;
+    color: #111827;
+    font-weight: 300;
+}
+
+body.dark .counter-value {
+    color: #ffffff;
+}
+
+.counter-buttons {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.counter-btn {
+    width: 3rem;
+    height: 3rem;
+    border: none;
+    border-radius: 0.5rem;
+    color: #ffffff;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    font-size: 1.5rem;
+    font-weight: 300;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.decrement-btn {
+    background-color: #ef4444;
+}
+
+.decrement-btn:hover:not(:disabled) {
+    background-color: #dc2626;
+}
+
+.decrement-btn:disabled {
+    background-color: #9ca3af;
+    cursor: not-allowed;
+}
+
+.increment-btn {
+    background-color: #22c55e;
+}
+
+.increment-btn:hover {
+    background-color: #16a34a;
+}
+
+/* Config Page Header */
+.config-header-title {
+    display: flex;
+    justify-content: center;
+    align-items: center;
     position: absolute;
+    left: 0;
+    right: 0;
+    pointer-events: none;
+}
+
+.config-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+body.dark .config-title {
+    color: #ffffff;
+}
+
+/* --- CONFIG PAGE DESIGN --- */
+
+.config-content {
+    padding: 2rem 1.5rem;
+    max-width: 48rem;
+    margin: 0 auto;
+    width: 100%;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.wifi-section {
+    margin-bottom: 2rem;
+}
+
+.section-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+body.dark .section-title {
+    color: #f3f4f6;
+    border-bottom-color: #374151;
+}
+
+.wifi-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.wifi-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.25rem;
+    background-color: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.75rem;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+body.dark .wifi-item {
+    background-color: #1f2937;
+    border-color: #374151;
+}
+
+.wifi-item:hover {
+    border-color: #d1d5db;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
+}
+
+body.dark .wifi-item:hover {
+    border-color: #4b5563;
+}
+
+.wifi-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.wifi-ssid {
+    font-weight: 600;
+    color: #111827;
+    font-size: 1rem;
+}
+
+body.dark .wifi-ssid {
+    color: #f3f4f6;
+}
+
+.wifi-meta {
+    font-size: 0.875rem;
+    color: #16a34a; /* Grün für "Verbunden" */
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+body.dark .wifi-meta {
+    color: #4ade80;
+}
+
+/* Header Title Fix für Config Page */
+.config-header-title {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: absolute;
+    left: 0;
+    right: 0;
+    pointer-events: none; /* Klicks gehen durch zu den Buttons */
+    height: 100%;
+}
+
+.config-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+body.dark .config-title {
+    color: #ffffff;
+}
+
+/* Mode Switch - Toggle Style */
+.mode-switch-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 200px; /* Breite des gesamten Schalters */
+    height: 34px;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
     top: 0;
     left: 0;
-    width: 100vw;
-    height: 100vh;
-    background-color: rgba(0, 0, 0, 0.5);
+    right: 0;
+    bottom: 0;
+    background-color: #e5e7eb; /* Hintergrund Countdown (Standard) */
+    transition: .4s;
+    border-radius: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 10px;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+}
+
+body.dark .slider {
+    background-color: #374151;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 26px;
+    width: 96px; /* Breite des "Knopfes" */
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 26px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
     z-index: 1;
 }
 
-#timeOutWinner {
-    position: relative;
+body.dark .slider:before {
+    background-color: #1f2937; /* Dunkler Knopf im Dark Mode */
+}
+
+/* Wenn Checkbox gecheckt (Count up) */
+input:checked + .slider:before {
+    transform: translateX(96px); /* Verschiebung nach rechts */
+}
+
+/* Text Labels */
+.label-text {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #6b7280;
+    z-index: 2; /* Über dem Slider-Hintergrund, aber unter dem Knopf? Nein, muss drüber sein */
+    pointer-events: none; /* Klicks gehen durch auf den Slider */
+    width: 50%;
     text-align: center;
-    display: none;
-    font-size: 7.5rem;
-    z-index: 2;
-    top: 15vh;
-    text-shadow: 5px 5px rgba(var(--text-color), 0.1);
+    transition: color 0.3s;
+}
+
+.label-left {
+    color: #111827; /* Aktiv Farbe links */
+}
+.label-right {
+    color: #6b7280; /* Inaktiv Farbe rechts */
+}
+
+body.dark .label-left { color: #ffffff; }
+body.dark .label-right { color: #9ca3af; }
+
+/* Farben wechseln wenn gecheckt */
+input:checked + .slider .label-left {
+    color: #6b7280;
+}
+input:checked + .slider .label-right {
+    color: #111827;
+}
+
+body.dark input:checked + .slider .label-left { color: #9ca3af; }
+body.dark input:checked + .slider .label-right { color: #ffffff; }
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .time-display {
+        font-size: 4rem;
+    }
+
+    .play-pause-btn {
+        padding: 0.75rem 1.5rem;
+        font-size: 0.875rem;
+    }
+
+    .counter-container {
+        padding: 1.5rem;
+    }
+
+    .counter-title {
+        font-size: 0.875rem;
+    }
+
+    .counter-value {
+        font-size: 2.5rem;
+    }
+
+    .counter-btn {
+        width: 2.5rem;
+        height: 2.5rem;
+        font-size: 1.25rem;
+    }
+
+    .leaderboard-title {
+        font-size: 1.125rem;
+    }
+
+    .leaderboard-name {
+        font-size: 0.8125rem;
+    }
+
+    .leaderboard-score {
+        font-size: 0.6875rem;
+    }
+
+    .modal-title {
+        font-size: 1.125rem;
+    }
+
+    .form-input {
+        font-size: 0.875rem;
+    }
+
+    .btn {
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+    }
 }

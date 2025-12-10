@@ -1,0 +1,7 @@
+/build
+/.vscode
+/.devcontainer
+/managed_components
+sdkconfig.old
+*.bin
+*.elf

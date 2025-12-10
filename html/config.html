@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jenga Setup</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1 class="config-title">WLAN Setup</h1>
+            <div class="header-controls">
+                <button id="refreshBtn" onclick="fetchNetworks()" class="icon-btn" title="Aktualisieren">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M23 4v6h-6M1 20v-6h6"></path>
+                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                    </svg>
+                </button>
+                <button id="themeToggle" class="icon-btn" title="Design wechseln">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                </button>
+            </div>
+        </header>
+        
+        <main class="config-content">
+            <div class="section-title">Verfügbare Netzwerke</div>
+            <div id="networkList" class="wifi-list">
+                <div class="loading">Suche Netzwerke...</div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal -->
+    <div id="wifiModal" class="modal">
+        <div class="modal-content">
+            <h3 class="modal-title">Verbinden</h3>
+            <div class="form-group">
+                <input type="text" id="ssidInput" class="form-input" placeholder="SSID" readonly>
+            </div>
+            <div class="form-group">
+                <input type="password" id="passwordInput" class="form-input" placeholder="WLAN Passwort">
+            </div>
+            <div class="modal-actions">
+                <button onclick="closeModal()" class="btn btn-secondary">Abbrechen</button>
+                <button class="btn btn-primary" onclick="saveWifi()">Verbinden</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+</body>
+</html>
