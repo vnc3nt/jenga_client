@@ -307,6 +307,7 @@ body.dark .leaderboard-score {
 
 /* Timer Container */
 .timer-container {
+    width: 20rem;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -628,8 +629,8 @@ body.dark .config-title {
 .toggle-switch {
     position: relative;
     display: inline-block;
-    width: 200px; /* Breite des gesamten Schalters */
-    height: 34px;
+    width: 240px; /* Etwas breiter für den Text */
+    height: 48px; /* Exakt die Höhe der Buttons (24px Icon + 1.5rem Padding) */
 }
 
 .toggle-switch input {
@@ -645,13 +646,13 @@ body.dark .config-title {
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: #e5e7eb; /* Hintergrund Countdown (Standard) */
+    background-color: #e5e7eb;
     transition: .4s;
-    border-radius: 34px;
+    border-radius: 0.5rem; /* Gleiche Rundung wie Buttons */
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 10px;
+    padding: 0 5px;
     box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
 }
 
@@ -662,43 +663,43 @@ body.dark .slider {
 .slider:before {
     position: absolute;
     content: "";
-    height: 26px;
-    width: 96px; /* Breite des "Knopfes" */
-    left: 4px;
-    bottom: 4px;
+    height: 38px; /* 48px Höhe - 5px Padding oben/unten */
+    width: 115px; /* Hälfte der Breite minus Padding */
+    left: 5px;
+    bottom: 5px;
     background-color: white;
     transition: .4s;
-    border-radius: 26px;
+    border-radius: 0.3rem; /* Leicht abgerundetes Inneres */
     box-shadow: 0 1px 3px rgba(0,0,0,0.2);
     z-index: 1;
 }
 
 body.dark .slider:before {
-    background-color: #1f2937; /* Dunkler Knopf im Dark Mode */
+    background-color: #1f2937;
 }
 
 /* Wenn Checkbox gecheckt (Count up) */
 input:checked + .slider:before {
-    transform: translateX(96px); /* Verschiebung nach rechts */
+    transform: translateX(115px);
 }
 
 /* Text Labels */
 .label-text {
     font-size: 0.85rem;
-    font-weight: 500;
+    font-weight: 600;
     color: #6b7280;
-    z-index: 2; /* Über dem Slider-Hintergrund, aber unter dem Knopf? Nein, muss drüber sein */
-    pointer-events: none; /* Klicks gehen durch auf den Slider */
+    z-index: 2;
+    pointer-events: none;
     width: 50%;
     text-align: center;
     transition: color 0.3s;
 }
 
 .label-left {
-    color: #111827; /* Aktiv Farbe links */
+    color: #111827;
 }
 .label-right {
-    color: #6b7280; /* Inaktiv Farbe rechts */
+    color: #6b7280;
 }
 
 body.dark .label-left { color: #ffffff; }

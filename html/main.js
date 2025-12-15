@@ -61,13 +61,11 @@ document.addEventListener('DOMContentLoaded', () => {
         isDark = !isDark;
         document.body.classList.toggle('dark', isDark);
         
-        // Icons auf Main Page
-        document.getElementById('sunIcon').classList.toggle('hidden', isDark);
-        document.getElementById('moonIcon').classList.toggle('hidden', !isDark);
-        
-        // Icons auf Config Page
-        document.getElementById('sunIconConfig').classList.toggle('hidden', isDark);
-        document.getElementById('moonIconConfig').classList.toggle('hidden', !isDark);
+        // Die alten Icon-Umschalter entfernen, da wir jetzt ein statisches Icon haben
+        // document.getElementById('sunIcon').classList.toggle('hidden', isDark);
+        // document.getElementById('moonIcon').classList.toggle('hidden', !isDark);
+        // document.getElementById('sunIconConfig').classList.toggle('hidden', isDark);
+        // document.getElementById('moonIconConfig').classList.toggle('hidden', !isDark);
     }
 
     settingsBtn.addEventListener('click', () => switchPage('config'));
