@@ -378,6 +378,9 @@ extern "C" void app_main(void) {
                          time_countdown, time_countup, piece_counter);
                 log_timer = 0;
             }
+
+            // WICHTIG: Kurze Pause, damit der Watchdog nicht zuschlägt und andere Tasks laufen können
+            vTaskDelay(pdMS_TO_TICKS(10));
         }   
     }
 }
