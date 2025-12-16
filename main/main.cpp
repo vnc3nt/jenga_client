@@ -366,7 +366,7 @@ extern "C" void app_main(void) {
             vTaskDelay(pdMS_TO_TICKS(100));
         }
         else {
-            // Im Spielmodus
+            // --- IM SPIELMODUS ---
             
             // 1. Zeitberechnung (Delta Time)
             int64_t current_time = esp_timer_get_time();
@@ -374,102 +374,61 @@ extern "C" void app_main(void) {
             last_loop_time = current_time;
             int64_t delta_ms = delta_us / 1000;
 
-            // --- HINZUFÜGEN: Zeit-Logik ---
+            // 2. SPIEL LOGIK (Zeit & Roboter)
             if (!is_paused) {
+                // A) Countdown
                 if (current_game_mode == MODE_A_COUNTDOWN) {
                     time_countdown -= delta_ms;
                     
                     // Wenn Zeit abgelaufen ist
                     if (time_countdown <= 0) {
                         time_countdown = 0;
-                        is_paused = true; // Automatisch pausieren
+                        is_paused = true; // Automatisch pausieren (Game Over)
                         ESP_LOGI(TAG, "Countdown abgelaufen! Spiel pausiert.");
-                        
-                        // Optional: Hier könnte man einen Sound abspielen oder LED blinken lassen
                     }
-                } else {
+                } 
+                // B) Countup
+                else {
                     time_countup += delta_ms;
                 }
-            }
-            // -----------------------------
 
-            // --- LED LOGIK ---
-            
-            // Priorität 1: Zeit abgelaufen (Alarm)
-            if (current_game_mode == MODE_A_COUNTDOWN && time_countdown <= 0) {
-                // Schnelles Blinken (500ms Takt)
-                // current_time ist in Mikrosekunden. / 500000 = 0.5 Sekunden
-                bool blink_state = (current_time / 500000) % 2;
-                gpio_set_level(PAUSE_LED_PIN, blink_state);
-            }
-            // Priorität 2: Normal Pausiert
-            else if (is_paused) {
-                // LED dauerhaft AN
-                gpio_set_level(PAUSE_LED_PIN, 1);
-            }
-            // Priorität 3: Spiel läuft
-            else {
-                // LED AUS
-                gpio_set_level(PAUSE_LED_PIN, 0);
-            }
-
-            // WebSocket Broadcast Timer
-            ws_timer += delta_ms;
-            if (ws_timer >= 250) { // Alle 250ms Update an Webseite senden
-                broadcast_game_state();
-                ws_timer = 0;
-            }
-            // ---------------------------------------------
-
-            // 2. Button Logik (Pause / Shutdown)
-            handle_button_logic();
-            
-            // 3. Spiel Logik (nur wenn nicht pausiert)
-            if (!is_paused) {
-                
-                // --- MODUS A: COUNTDOWN ---
-                if (current_game_mode == MODE_A_COUNTDOWN) {
-                    // Zeit Update
-                    if (time_countdown > 0) {
-                        time_countdown -= delta_ms;
-                        if (time_countdown < 0) time_countdown = 0;
-                    }
-
-                    // LED Status: Wenn Countdown abgelaufen -> Pulsieren
-                    if (time_countdown <= 0) {
-                        pulse_counter += delta_ms;
-                        if (pulse_counter > 200) { // Schnelles Blinken (Pulsieren)
-                            led_state = !led_state;
-                            gpio_set_level(PAUSE_LED_PIN, led_state);
-                            pulse_counter = 0;
-                        }
-                    } else {
-                        gpio_set_level(PAUSE_LED_PIN, 0); // LED Aus (Spiel läuft)
-                    }
-                }
-                // --- MODUS B: COUNTUP ---
-                else if (current_game_mode == MODE_B_COUNTUP) {
-                    // Zeit Update
-                    time_countup += delta_ms;
-                    
-                    // LED Status: Einfach aus, da Spiel läuft
-                    gpio_set_level(PAUSE_LED_PIN, 0);
-                }
-
-                // Roboter Signal Erkennung (Rising Edge) - Modus unabhängig
+                // C) Roboter Signal Erkennung (Nur wenn Spiel läuft)
                 bool robot_signal = gpio_get_level(ROBOT_PIN);
                 if (robot_signal && !last_robot_pin_state) {
                     piece_counter++;
                     ESP_LOGI(TAG, "ROBOT SIGNAL! Piece Counter: %d", piece_counter);
                 }
                 last_robot_pin_state = robot_signal;
-
-            } else {
-                // Wenn Pausiert -> LED AN (Dauerhaft)
-                gpio_set_level(PAUSE_LED_PIN, 1);
             }
 
-            // Debug Ausgabe (optional, z.B. alle 5 Sekunden um Log nicht zu fluten)
+            // 3. LED LOGIK (Hier wird entschieden, was die LED macht)
+            
+            // Priorität 1: Zeit abgelaufen (Alarm) -> BLINKEN
+            if (current_game_mode == MODE_A_COUNTDOWN && time_countdown <= 0) {
+                // Schnelles Blinken (100ms Takt)
+                bool blink_state = (current_time / 100000) % 2;
+                gpio_set_level(PAUSE_LED_PIN, blink_state);
+            }
+            // Priorität 2: Normal Pausiert -> DAUERHAFT AN
+            else if (is_paused) {
+                gpio_set_level(PAUSE_LED_PIN, 1);
+            }
+            // Priorität 3: Spiel läuft -> AUS
+            else {
+                gpio_set_level(PAUSE_LED_PIN, 0);
+            }
+
+            // 4. WebSocket Broadcast Timer
+            ws_timer += delta_ms;
+            if (ws_timer >= 250) { 
+                broadcast_game_state();
+                ws_timer = 0;
+            }
+
+            // 5. Button Logik (Pause / Shutdown)
+            handle_button_logic();
+            
+            // Debug Ausgabe (alle 5 Sekunden)
             static int64_t log_timer = 0;
             log_timer += delta_ms;
             if (log_timer > 5000) {
@@ -480,7 +439,7 @@ extern "C" void app_main(void) {
                 log_timer = 0;
             }
 
-            // WICHTIG: Kurze Pause, damit der Watchdog nicht zuschlägt und andere Tasks laufen können
+            // WICHTIG: Kurze Pause für Watchdog
             vTaskDelay(pdMS_TO_TICKS(10));
         }   
     }
