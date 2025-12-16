@@ -173,13 +173,17 @@
         </div>
 
         <!-- Edit Time Modal -->
-        <div id="timeModal" class="modal hidden">
+        <div id="timeModal" class="modal">
             <div class="modal-content">
-                <h3 class="modal-title">Zeit bearbeiten</h3>
-                <div class="form-group">
-                    <label>Zeit in Sekunden</label>
-                    <input type="number" id="modalTimeInput" class="form-input" placeholder="Sekunden">
+                <h2 class="modal-title">Startzeit ändern</h2>
+                
+                <!-- NEU: Zwei Inputs für MM und SS -->
+                <div class="time-input-wrapper">
+                    <input type="number" id="inputMin" class="time-input" placeholder="00" min="0" max="99">
+                    <span class="time-separator">:</span>
+                    <input type="number" id="inputSec" class="time-input" placeholder="00" min="0" max="59">
                 </div>
+
                 <div class="modal-actions">
                     <button id="modalCancelBtn" class="btn btn-secondary">Abbrechen</button>
                     <button id="modalSaveBtn" class="btn btn-primary">Speichern</button>

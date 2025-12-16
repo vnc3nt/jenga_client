@@ -116,6 +116,7 @@ body.dark .modal-content {
 }
 
 .modal-title {
+    text-align: center;
     font-size: 1.5rem;
     font-weight: 600;
     color: #111827;
@@ -161,7 +162,7 @@ body.dark .form-input {
 
 .modal-actions {
     display: flex;
-    justify-content: flex-end;
+    justify-content: center;
     gap: 0.75rem;
     margin-top: 1.5rem;
 }
@@ -365,13 +366,27 @@ body.dark .time-display {
     cursor: default;
 }
 
-.time-display.editable {
-    cursor: pointer;
-    transition: color 0.2s;
+/* NEU: Animation für rote Blink-Effekte */
+@keyframes blinkRed {
+    0%, 100% { color: inherit; }
+    50% { color: #ef4444; } /* Helles Rot */
 }
 
-.time-display.editable:hover {
-    color: #f97316;
+.blink-red {
+    animation: blinkRed 1s infinite;
+}
+
+/* NEU: Zeigt an, dass die Zeit anklickbar ist */
+.time-display.editable {
+    cursor: pointer;
+    /* Light Mode: Dunkles Grau (passend zum Text) mit Transparenz */
+    border-bottom: 2px dotted rgba(17, 24, 39, 0.3); 
+}
+
+/* Dark Mode Anpassung */
+body.dark .time-display.editable {
+    /* Dark Mode: Weiß mit Transparenz */
+    border-bottom-color: rgba(255, 255, 255, 0.3);
 }
 
 /* Progress Bar */
@@ -793,7 +808,63 @@ body.dark input:checked + .slider .label-right { color: #ffffff; }
     }
 
     .btn {
-        padding: 0.5rem 1rem;
         font-size: 0.875rem;
     }
+}
+
+/* NEU: Styles für die Zeiteingabe im Modal */
+.time-input-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 1.5rem;
+}
+
+.time-input {
+    width: 80px;
+    height: 80px;
+    font-size: 3rem;
+    text-align: center;
+    border: 2px solid #e5e7eb;
+    border-radius: 0.5rem;
+    background-color: #f9fafb;
+    color: #111827;
+    /* Entfernt die Spinner-Buttons bei Number-Inputs */
+    -moz-appearance: textfield; 
+}
+
+/* Spinner entfernen für Chrome/Safari/Edge */
+.time-input::-webkit-outer-spin-button,
+.time-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.time-input:focus {
+    outline: none;
+    border-color: #f97316; /* Orange Fokus */
+    background-color: #fff;
+}
+
+.time-separator {
+    font-size: 3rem;
+    font-weight: bold;
+    color: #374151;
+    margin-bottom: 10px; /* Optische Korrektur */
+}
+
+body.dark .time-input {
+    background-color: #374151;
+    border-color: #4b5563;
+    color: #ffffff;
+}
+
+body.dark .time-input:focus {
+    border-color: #f97316;
+    background-color: #1f2937;
+}
+
+body.dark .time-separator {
+    color: #d1d5db;
 }

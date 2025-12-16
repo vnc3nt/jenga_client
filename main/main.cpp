@@ -374,7 +374,46 @@ extern "C" void app_main(void) {
             last_loop_time = current_time;
             int64_t delta_ms = delta_us / 1000;
 
-            // --- HINZUFÜGEN: WebSocket Broadcast Timer ---
+            // --- HINZUFÜGEN: Zeit-Logik ---
+            if (!is_paused) {
+                if (current_game_mode == MODE_A_COUNTDOWN) {
+                    time_countdown -= delta_ms;
+                    
+                    // Wenn Zeit abgelaufen ist
+                    if (time_countdown <= 0) {
+                        time_countdown = 0;
+                        is_paused = true; // Automatisch pausieren
+                        ESP_LOGI(TAG, "Countdown abgelaufen! Spiel pausiert.");
+                        
+                        // Optional: Hier könnte man einen Sound abspielen oder LED blinken lassen
+                    }
+                } else {
+                    time_countup += delta_ms;
+                }
+            }
+            // -----------------------------
+
+            // --- LED LOGIK ---
+            
+            // Priorität 1: Zeit abgelaufen (Alarm)
+            if (current_game_mode == MODE_A_COUNTDOWN && time_countdown <= 0) {
+                // Schnelles Blinken (500ms Takt)
+                // current_time ist in Mikrosekunden. / 500000 = 0.5 Sekunden
+                bool blink_state = (current_time / 500000) % 2;
+                gpio_set_level(PAUSE_LED_PIN, blink_state);
+            }
+            // Priorität 2: Normal Pausiert
+            else if (is_paused) {
+                // LED dauerhaft AN
+                gpio_set_level(PAUSE_LED_PIN, 1);
+            }
+            // Priorität 3: Spiel läuft
+            else {
+                // LED AUS
+                gpio_set_level(PAUSE_LED_PIN, 0);
+            }
+
+            // WebSocket Broadcast Timer
             ws_timer += delta_ms;
             if (ws_timer >= 250) { // Alle 250ms Update an Webseite senden
                 broadcast_game_state();
