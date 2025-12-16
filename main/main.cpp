@@ -179,6 +179,11 @@ void api_set_game_mode(int mode) {
 
 // NEU: API um Zeit zurückzusetzen
 void api_reset_time() {
+    // 1. Züge immer zurücksetzen
+    piece_counter = 0;
+    ESP_LOGI(TAG, "API: Züge auf 0 zurückgesetzt");
+
+    // 2. Zeit je nach Modus zurücksetzen
     if (current_game_mode == MODE_A_COUNTDOWN) {
         time_countdown = countdown_start_value;
         ESP_LOGI(TAG, "API: Zeit Reset (Countdown) auf %lu ms", countdown_start_value);
