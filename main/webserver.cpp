@@ -19,20 +19,38 @@
 #include "freertos/event_groups.h"
 #include "cJSON.h"
 
-static const char *TAG = "wss_echo_server";
+static const char *TAG = "wss_server";
 
-// --- mDNS ---
-static void initialise_mdns(void)
+// --- HINZUFÜGEN: mDNS Implementierung ---
+void initialise_mdns(void)
 {
+    ESP_LOGI(TAG, "Initialisiere mDNS...");
     esp_err_t err = mdns_init();
     if (err) {
-        ESP_LOGE(TAG, "Fehler bei mdns_init: %d", err);
+        ESP_LOGE(TAG, "MDNS Init fehlgeschlagen: %d", err);
         return;
     }
+    // Hostname setzen: jenga3 -> jenga3.local
     mdns_hostname_set("jenga3");
-    mdns_instance_name_set("ESP32 Jenga");
-    ESP_LOGI(TAG, "mDNS-Dienst gestartet: http://jenga3.local");
+    mdns_instance_name_set("Jenga ESP32 Webserver");
+    
+    // Service bekanntgeben (optional, hilft aber Discovery-Tools)
+    mdns_service_add(NULL, "_http", "_tcp", 80, NULL, 0);
+    
+    ESP_LOGI(TAG, "mDNS gestartet. Erreichbar unter: http://jenga3.local");
 }
+// ----------------------------------------
+
+// --- EXTERNE API FUNKTIONEN (aus main.cpp) ---
+// Damit wir von hier aus die Spiellogik steuern können
+extern void api_set_paused(bool paused);
+extern void api_set_countdown_manual(uint32_t new_time_ms);
+extern void api_increment_piece_counter();
+extern void api_decrement_piece_counter();
+extern void api_set_game_mode(int mode);
+extern bool api_get_is_paused(); 
+// NEU:
+extern void api_reset_time();
 
 // --- WEBSERVER & WEBSOCKET ---
 static httpd_handle_t server = NULL;
@@ -48,22 +66,55 @@ struct async_resp_arg {
 
 static const size_t max_clients = 4;
 
+// --- BROADCAST FUNKTION (Wird von main.cpp aufgerufen) ---
+void ws_broadcast(const char* str) {
+    if (server == NULL) return;
+    
+    size_t clients = max_clients;
+    int client_fds[max_clients];
+    
+    // Liste aller verbundenen Clients abrufen
+    if (httpd_get_client_list(server, &clients, client_fds) == ESP_OK) {
+        for (size_t i = 0; i < clients; ++i) {
+            int sock = client_fds[i];
+            
+            // Prüfen, ob es ein WebSocket Client ist
+            if (httpd_ws_get_fd_info(server, sock) == HTTPD_WS_CLIENT_WEBSOCKET) {
+                httpd_ws_frame_t ws_pkt;
+                memset(&ws_pkt, 0, sizeof(httpd_ws_frame_t));
+                ws_pkt.final = true;
+                ws_pkt.fragmented = false;
+                ws_pkt.type = HTTPD_WS_TYPE_TEXT;
+                ws_pkt.payload = (uint8_t*)str;
+                ws_pkt.len = strlen(str);
+                
+                // Asynchron senden, um den Main-Loop nicht zu blockieren
+                httpd_ws_send_frame_async(server, sock, &ws_pkt);
+            }
+        }
+    }
+}
+
+// --- WEBSOCKET HANDLER (Empfängt Daten von JS) ---
 static esp_err_t ws_handler(httpd_req_t *req)
 {
     if (req->method == HTTP_GET) {
-        ESP_LOGI(TAG, "Handshake done, the new connection was opened");
+        ESP_LOGI(TAG, "Handshake done, new connection opened");
         return ESP_OK;
     }
+    
     httpd_ws_frame_t ws_pkt;
     uint8_t *buf = NULL;
     memset(&ws_pkt, 0, sizeof(httpd_ws_frame_t));
 
+    // 1. Länge abrufen
     esp_err_t ret = httpd_ws_recv_frame(req, &ws_pkt, 0);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "httpd_ws_recv_frame failed to get frame len with %d", ret);
         return ret;
     }
     
+    // 2. Speicher reservieren und Daten lesen
     if (ws_pkt.len) {
         buf = (uint8_t*)calloc(1, ws_pkt.len + 1);
         if (buf == NULL) {
@@ -79,27 +130,56 @@ static esp_err_t ws_handler(httpd_req_t *req)
         }
     }
 
-    if (ws_pkt.type == HTTPD_WS_TYPE_PONG) {
-        ESP_LOGD(TAG, "Received PONG message");
-        free(buf);
-        return wss_keep_alive_client_is_active((wss_keep_alive_t)httpd_get_global_user_ctx(req->handle),
-                httpd_req_to_sockfd(req));
-    } else if (ws_pkt.type == HTTPD_WS_TYPE_TEXT || ws_pkt.type == HTTPD_WS_TYPE_PING || ws_pkt.type == HTTPD_WS_TYPE_CLOSE) {
-        if (ws_pkt.type == HTTPD_WS_TYPE_TEXT) {
-            ESP_LOGI(TAG, "Received packet with message: %s", ws_pkt.payload);
-        } else if (ws_pkt.type == HTTPD_WS_TYPE_PING) {
-            ws_pkt.type = HTTPD_WS_TYPE_PONG;
-        } else if (ws_pkt.type == HTTPD_WS_TYPE_CLOSE) {
-            ws_pkt.len = 0;
-            ws_pkt.payload = NULL;
+    // 3. Daten verarbeiten
+    if (ws_pkt.type == HTTPD_WS_TYPE_TEXT) {
+        ESP_LOGI(TAG, "Received packet: %s", ws_pkt.payload);
+        
+        // JSON Parsen
+        cJSON *root = cJSON_Parse((char*)ws_pkt.payload);
+        if (root != NULL) {
+            cJSON *cmd = cJSON_GetObjectItem(root, "cmd");
+            
+            if (cJSON_IsString(cmd)) {
+                // --- BEFEHLSVERARBEITUNG ---
+                
+                if (strcmp(cmd->valuestring, "toggle_pause") == 0) {
+                    bool current = api_get_is_paused();
+                    api_set_paused(!current);
+                }
+                else if (strcmp(cmd->valuestring, "set_mode") == 0) {
+                    cJSON *val = cJSON_GetObjectItem(root, "val");
+                    if (cJSON_IsNumber(val)) {
+                        api_set_game_mode(val->valueint);
+                    }
+                }
+                else if (strcmp(cmd->valuestring, "inc_moves") == 0) {
+                    api_increment_piece_counter();
+                }
+                else if (strcmp(cmd->valuestring, "dec_moves") == 0) {
+                    api_decrement_piece_counter();
+                }
+                else if (strcmp(cmd->valuestring, "set_time") == 0) {
+                    cJSON *val = cJSON_GetObjectItem(root, "val");
+                    if (cJSON_IsNumber(val)) {
+                        api_set_countdown_manual((uint32_t)val->valueint);
+                    }
+                }
+                // NEU: Reset Command
+                else if (strcmp(cmd->valuestring, "reset_time") == 0) {
+                    api_reset_time();
+                }
+            }
+            cJSON_Delete(root);
+        } else {
+            ESP_LOGW(TAG, "Invalid JSON received");
         }
-        ret = httpd_ws_send_frame(req, &ws_pkt);
-        if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "httpd_ws_send_frame failed with %d", ret);
-        }
-        free(buf);
-        return ret;
+    } 
+    else if (ws_pkt.type == HTTPD_WS_TYPE_PING) {
+        // Ping -> Pong
+        ws_pkt.type = HTTPD_WS_TYPE_PONG;
+        httpd_ws_send_frame(req, &ws_pkt);
     }
+
     free(buf);
     return ESP_OK;
 }
@@ -129,21 +209,7 @@ static const httpd_uri_t ws = {
         .supported_subprotocol = NULL
 };
 
-static void send_hello(void *arg)
-{
-    static const char * data = "Hello client :)";
-    struct async_resp_arg *resp_arg = (struct async_resp_arg *)arg;
-    httpd_handle_t hd = resp_arg->hd;
-    int fd = resp_arg->fd;
-    httpd_ws_frame_t ws_pkt;
-    memset(&ws_pkt, 0, sizeof(httpd_ws_frame_t));
-    ws_pkt.payload = (uint8_t*)data;
-    ws_pkt.len = strlen(data);
-    ws_pkt.type = HTTPD_WS_TYPE_TEXT;
-
-    httpd_ws_send_frame_async(hd, fd, &ws_pkt);
-    free(resp_arg);
-}
+// --- ENTFERNT: send_hello (wurde nicht genutzt und verursachte Warnung) ---
 
 static void send_ping(void *arg)
 {
@@ -296,7 +362,10 @@ static httpd_handle_t start_wss_echo_server(void)
 // --- INIT ---
 void init_webserver(void) {
     ESP_LOGI(TAG, "Webserver Init...");
-    initialise_mdns();
+    
+    // WIEDER AKTIVIEREN: mDNS starten
+    initialise_mdns(); 
+    
     server = start_wss_echo_server();
     
     if (server == NULL) {

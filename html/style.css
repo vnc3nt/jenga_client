@@ -194,6 +194,26 @@ body.dark .btn-secondary {
     background-color: #ea580c;
 }
 
+/* Quadratischer Button Stil */
+.btn-square {
+    width: 56px; /* Oder die Höhe deines Play-Buttons */
+    height: 56px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 15px; /* Abstand zum Play Button */
+}
+
+/* Disabled State für Buttons (ausgegraut) */
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background-color: #555 !important; /* Dunkelgrau statt Orange */
+    transform: none !important; /* Kein Klick-Effekt */
+    box-shadow: none !important;
+}
+
 /* Main Content Grid */
 .main-content {
     position: relative;

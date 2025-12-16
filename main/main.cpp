@@ -157,8 +157,13 @@ void api_increment_piece_counter() {
 }
 
 void api_decrement_piece_counter() {
-    piece_counter--;
-    ESP_LOGI(TAG, "API: Stückzähler dekrementiert auf: %d", piece_counter);
+    // HIER: Sicherheitsabfrage hinzufügen
+    if (piece_counter > 0) {
+        piece_counter--;
+        ESP_LOGI(TAG, "API: Stückzähler dekrementiert auf: %d", piece_counter);
+    } else {
+        ESP_LOGW(TAG, "API: Dekrementierung ignoriert, Counter ist bereits 0");
+    }
 }
 
 // API um den Spielmodus zu setzen
@@ -169,6 +174,17 @@ void api_set_game_mode(int mode) {
     } else {
         current_game_mode = MODE_B_COUNTUP;
         ESP_LOGI(TAG, "API: Modus auf COUNTUP (B) gesetzt");
+    }
+}
+
+// NEU: API um Zeit zurückzusetzen
+void api_reset_time() {
+    if (current_game_mode == MODE_A_COUNTDOWN) {
+        time_countdown = countdown_start_value;
+        ESP_LOGI(TAG, "API: Zeit Reset (Countdown) auf %lu ms", countdown_start_value);
+    } else {
+        time_countup = 0;
+        ESP_LOGI(TAG, "API: Zeit Reset (Countup) auf 0 ms");
     }
 }
 
@@ -222,6 +238,36 @@ void handle_button_logic() {
         press_start = 0;
     }
     last_state = current_state;
+}
+
+// --- NEUE FUNKTION: Status senden ---
+void broadcast_game_state() {
+    cJSON *root = cJSON_CreateObject();
+    
+    // 1. Modus
+    cJSON_AddNumberToObject(root, "mode", (int)current_game_mode);
+    
+    // 2. Zeiten
+    cJSON_AddNumberToObject(root, "time_countdown", (double)time_countdown);
+    cJSON_AddNumberToObject(root, "time_countup", (double)time_countup);
+    cJSON_AddNumberToObject(root, "countdown_start", (double)countdown_start_value);
+    
+    // 3. Status
+    cJSON_AddBoolToObject(root, "is_paused", is_paused);
+    
+    // 4. Counter
+    cJSON_AddNumberToObject(root, "piece_counter", piece_counter);
+
+    // JSON String erstellen
+    char *json_str = cJSON_PrintUnformatted(root);
+    
+    // Senden (Funktion muss in webserver.cpp implementiert sein!)
+    if (json_str != NULL) {
+        ws_broadcast(json_str);
+        free(json_str); // WICHTIG: Speicher freigeben
+    }
+    
+    cJSON_Delete(root);
 }
 
 // --- MAIN ---
@@ -301,6 +347,9 @@ extern "C" void app_main(void) {
     bool led_state = false;
     int64_t last_loop_time = esp_timer_get_time();
     int pulse_counter = 0;
+    
+    // Timer für WebSocket Broadcast (z.B. alle 200ms)
+    int64_t ws_timer = 0; 
 
     ESP_LOGI(TAG, "Starte Game Loop. Modus A (Countdown). Zeit: %lld ms", time_countdown);
 
@@ -320,9 +369,17 @@ extern "C" void app_main(void) {
             last_loop_time = current_time;
             int64_t delta_ms = delta_us / 1000;
 
+            // --- HINZUFÜGEN: WebSocket Broadcast Timer ---
+            ws_timer += delta_ms;
+            if (ws_timer >= 250) { // Alle 250ms Update an Webseite senden
+                broadcast_game_state();
+                ws_timer = 0;
+            }
+            // ---------------------------------------------
+
             // 2. Button Logik (Pause / Shutdown)
             handle_button_logic();
-
+            
             // 3. Spiel Logik (nur wenn nicht pausiert)
             if (!is_paused) {
                 

@@ -85,17 +85,27 @@
                         </div>
                     </div>
 
-                    <!-- Play/Pause Button -->
-                    <button id="playPauseBtn" class="play-pause-btn">
-                        <svg id="playIcon" class="icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                        </svg>
-                        <svg id="pauseIcon" class="icon hidden" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="6" y="4" width="4" height="16"></rect>
-                            <rect x="14" y="4" width="4" height="16"></rect>
-                        </svg>
-                        <span id="playPauseText">Play</span>
-                    </button>
+                    <div class="controls">
+                        <!-- NEU: Reset Button -->
+                        <button id="resetBtn" class="btn btn-primary btn-square" aria-label="Reset Time">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                                <path d="M3 3v5h5"/>
+                            </svg>
+                        </button>
+
+                        <!-- Existierender Play Button -->
+                        <button id="playPauseBtn" class="btn btn-primary">
+                            <svg id="playIcon" class="icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                            </svg>
+                            <svg id="pauseIcon" class="icon hidden" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="6" y="4" width="4" height="16"></rect>
+                                <rect x="14" y="4" width="4" height="16"></rect>
+                            </svg>
+                            <span id="playPauseText">Play</span>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Counter (Right) -->

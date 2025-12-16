@@ -11,6 +11,9 @@ void send_json_to_clients(httpd_handle_t server, const char *json_str);
 // Funktion zum Initialisieren des Web-Servers
 void init_webserver(void);
 
+// Diese Funktion muss in webserver.cpp implementiert sein!
+extern void ws_broadcast(const char* str);
+
 #endif
 
 
