@@ -310,27 +310,38 @@ static esp_err_t favicon_handler(httpd_req_t *req) {
 // --- SERVER START ---
 static httpd_handle_t start_wss_echo_server(void)
 {
+    // 1. Keep-Alive Konfiguration ENTFERNEN
+    /*
     wss_keep_alive_config_t keep_alive_config = KEEP_ALIVE_CONFIG_DEFAULT();
     keep_alive_config.max_clients = max_clients;
     keep_alive_config.client_not_alive_cb = client_not_alive_cb;
     keep_alive_config.check_client_alive_cb = check_client_alive_cb;
     wss_keep_alive_t keep_alive = wss_keep_alive_start(&keep_alive_config);
+    */
 
     httpd_handle_t server = NULL;
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.server_port = 80;
     config.max_open_sockets = max_clients;
-    config.global_user_ctx = keep_alive;
-    config.open_fn = wss_open_fd;
-    config.close_fn = wss_close_fd;
-    config.max_uri_handlers = 12; // Erhöht für mehr Handler
+    
+    // 2. User Context und Callbacks VEREINFACHEN
+    config.global_user_ctx = NULL; // War: keep_alive
+    
+    // Wir brauchen open/close nicht zwingend für die Funktion, 
+    // aber wenn du Logs willst, kannst du einfache Handler schreiben.
+    // Um Fehlerquellen auszuschließen, setzen wir sie vorerst auf NULL oder Standard.
+    config.open_fn = NULL;  // War: wss_open_fd
+    config.close_fn = NULL; // War: wss_close_fd
+    
+    config.max_uri_handlers = 12;
 
     if (httpd_start(&server, &config) != ESP_OK) {
         ESP_LOGI(TAG, "Error starting server!");
         return NULL;
     }
 
-    wss_keep_alive_set_user_ctx(keep_alive, server);
+    // 3. Keep-Alive Context Setzen ENTFERNEN
+    // wss_keep_alive_set_user_ctx(keep_alive, server);
 
     // URIs registrieren
     httpd_register_uri_handler(server, &ws);

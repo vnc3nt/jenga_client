@@ -202,7 +202,16 @@ body.dark .btn-secondary {
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-right: 15px; /* Abstand zum Play Button */
+}
+
+/* Container für die Buttons anpassen */
+.controls {
+    display: flex;           /* Flexbox aktivieren */
+    flex-direction: row;     /* Nebeneinander anordnen */
+    justify-content: center; /* Zentrieren */
+    align-items: center;     /* Vertikal zentrieren */
+    gap: 20px;               /* Abstand zwischen den Buttons */
+    margin-bottom: 30px;
 }
 
 /* Disabled State für Buttons (ausgegraut) */
