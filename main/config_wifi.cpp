@@ -15,6 +15,8 @@
 #include "nvs_flash.h"
 #include "nvs.h"
 #include <string.h>
+#include <ctype.h>
+#include <stdlib.h>
 
 static const char *TAG = "CONFIG_WIFI";
 static httpd_handle_t config_server = NULL;
@@ -177,6 +179,152 @@ static esp_err_t status_handler(httpd_req_t *req) {
     httpd_resp_set_type(req, "application/json");
     httpd_resp_send(req, json_str, strlen(json_str));
     free(json_str);
+    cJSON_Delete(root);
+    return ESP_OK;
+}
+
+static bool is_all_digits(const char *s)
+{
+    if (s == NULL || *s == '\0') return false;
+    while (*s) {
+        if (!isdigit((unsigned char)*s)) return false;
+        s++;
+    }
+    return true;
+}
+
+// Geräte-ID Handler (GET): { id: number|null }
+static esp_err_t mdns_get_handler(httpd_req_t *req)
+{
+    bool has_id = false;
+    int32_t id_value = 0;
+
+    nvs_handle_t my_handle;
+    if (nvs_open("storage", NVS_READONLY, &my_handle) == ESP_OK) {
+        // Preferred: numeric key
+        if (nvs_get_i32(my_handle, "jenga_id", &id_value) == ESP_OK) {
+            if (id_value >= 1 && id_value <= 99) {
+                has_id = true;
+            }
+        }
+
+        // Backwards compatibility: legacy string key
+        if (!has_id) {
+            char legacy[16] = {0};
+            size_t len = sizeof(legacy);
+            if (nvs_get_str(my_handle, "mdns_id", legacy, &len) == ESP_OK) {
+                if (is_all_digits(legacy)) {
+                    int v = atoi(legacy);
+                    if (v >= 1 && v <= 99) {
+                        id_value = v;
+                        has_id = true;
+                    }
+                }
+            }
+        }
+
+        nvs_close(my_handle);
+    }
+
+    cJSON *root = cJSON_CreateObject();
+    if (has_id) {
+        cJSON_AddNumberToObject(root, "id", id_value);
+    } else {
+        cJSON_AddNullToObject(root, "id");
+    }
+
+    char *json_str = cJSON_PrintUnformatted(root);
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, json_str, strlen(json_str));
+
+    free(json_str);
+    cJSON_Delete(root);
+    return ESP_OK;
+}
+
+// Geräte-ID Handler (POST): { id: number|null } (null/fehlend => auto)
+static esp_err_t mdns_set_handler(httpd_req_t *req)
+{
+    char buf[128];
+    int ret = httpd_req_recv(req, buf, sizeof(buf) - 1);
+    if (ret <= 0) {
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+    buf[ret] = '\0';
+
+    cJSON *root = cJSON_Parse(buf);
+    if (!root) {
+        httpd_resp_set_status(req, "400 Bad Request");
+        httpd_resp_send(req, "Invalid JSON", HTTPD_RESP_USE_STRLEN);
+        return ESP_OK;
+    }
+
+    cJSON *id = cJSON_GetObjectItem(root, "id");
+
+    bool set_manual = false;
+    int32_t manual_value = 0;
+    bool valid = false;
+
+    if (id == NULL || cJSON_IsNull(id)) {
+        valid = true; // auto
+    } else if (cJSON_IsNumber(id)) {
+        int v = id->valueint;
+        if (v >= 1 && v <= 99) {
+            valid = true;
+            set_manual = true;
+            manual_value = v;
+        }
+    } else if (cJSON_IsString(id) && id->valuestring != NULL) {
+        // Compatibility: allow "auto"/"" or digits
+        char tmp[16] = {0};
+        strlcpy(tmp, id->valuestring, sizeof(tmp));
+
+        // trim leading spaces
+        char *p = tmp;
+        while (*p && isspace((unsigned char)*p)) p++;
+
+        for (size_t i = 0; p[i]; i++) {
+            p[i] = (char)tolower((unsigned char)p[i]);
+        }
+
+        if (*p == '\0' || strcmp(p, "auto") == 0) {
+            valid = true;
+        } else if (is_all_digits(p)) {
+            int v = atoi(p);
+            if (v >= 1 && v <= 99) {
+                valid = true;
+                set_manual = true;
+                manual_value = v;
+            }
+        }
+    }
+
+    if (!valid) {
+        cJSON_Delete(root);
+        httpd_resp_set_status(req, "400 Bad Request");
+        httpd_resp_send(req, "id must be null/empty (auto) or 1..99", HTTPD_RESP_USE_STRLEN);
+        return ESP_OK;
+    }
+
+    nvs_handle_t my_handle;
+    if (nvs_open("storage", NVS_READWRITE, &my_handle) == ESP_OK) {
+        // Keep storage clean: new numeric key, erase legacy key
+        nvs_erase_key(my_handle, "mdns_id");
+
+        if (set_manual) {
+            nvs_set_i32(my_handle, "jenga_id", manual_value);
+        } else {
+            nvs_erase_key(my_handle, "jenga_id");
+        }
+
+        nvs_commit(my_handle);
+        nvs_close(my_handle);
+        httpd_resp_send(req, "OK", 2);
+    } else {
+        httpd_resp_send_500(req);
+    }
+
     cJSON_Delete(root);
     return ESP_OK;
 }
@@ -372,7 +520,8 @@ static void register_uri(httpd_handle_t server, const char *uri, httpd_method_t 
 
 void start_config_server() {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-    config.max_uri_handlers = 12;
+    // Wir registrieren mehrere URIs (inkl. Captive-Portal Redirects + /mdns)
+    config.max_uri_handlers = 20;
 
     if (httpd_start(&config_server, &config) == ESP_OK) {
         register_uri(config_server, "/", HTTP_GET, config_html_handler);
@@ -382,6 +531,8 @@ void start_config_server() {
         register_uri(config_server, "/scan", HTTP_GET, scan_handler);
         register_uri(config_server, "/save", HTTP_POST, save_handler);
         register_uri(config_server, "/status", HTTP_GET, status_handler);
+        register_uri(config_server, "/mdns", HTTP_GET, mdns_get_handler);
+        register_uri(config_server, "/mdns", HTTP_POST, mdns_set_handler);
         register_uri(config_server, "/forget", HTTP_POST, forget_handler);
         register_uri(config_server, "/restart", HTTP_POST, restart_handler);
 

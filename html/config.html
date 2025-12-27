@@ -34,6 +34,24 @@
         </div>
         
         <div class="config-content">
+            <div class="wifi-section" style="margin-bottom: 1rem;">
+                <div class="section-header" style="display:flex; justify-content: space-between; align-items:center; margin-bottom: 0.75rem;">
+                    <h2 class="section-title" style="margin: 0;">Geräte-ID</h2>
+                    <button id="saveMdnsBtn" onclick="saveMdnsId()" class="btn btn-secondary btn-sm" title="Speichern">Speichern</button>
+                </div>
+
+                <div class="form-group" style="margin: 0;">
+                    <div style="display:flex; align-items:center; gap: 0.5rem;">
+                        <span style="color: var(--text-secondary);">jenga</span>
+                        <input type="number" id="mdnsIdInput" class="form-input" style="max-width: 90px;" placeholder="" inputmode="numeric" min="1" max="99" autocomplete="off" spellcheck="false">
+                        <span style="color: var(--text-secondary);">.local</span>
+                    </div>
+                    <div style="margin-top: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">
+                        <span>Leer lassen = ID wird beim Boot automatisch gewählt (jenga1, jenga2, ...).</span>
+                    </div>
+                </div>
+            </div>
+
             <div class="wifi-section">
                 <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                     <h2 class="section-title" style="margin: 0;">Verfügbare Netzwerke</h2>

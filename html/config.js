@@ -9,6 +9,91 @@ let savedSSID = "";
 let connectedSSID = "";
 let isConnected = false;
 
+// Einzige Konfig-Variable: Geräte-ID (number) oder nicht gesetzt (null => Auto)
+let deviceId = null;
+
+async function loadMdnsId() {
+    const input = document.getElementById('mdnsIdInput');
+    if (!input) return;
+
+    try {
+        const resp = await fetch('/mdns');
+        if (!resp.ok) return;
+        const data = await resp.json();
+
+        if (data && typeof data.id === 'number' && Number.isFinite(data.id)) {
+            const v = Math.trunc(data.id);
+            deviceId = (v >= 1 && v <= 99) ? v : null;
+        } else if (data && typeof data.id === 'string') {
+            // Kompatibilität: alte Firmware konnte String liefern
+            const s = data.id.trim();
+            if (/^\d+$/.test(s)) {
+                const v = parseInt(s, 10);
+                deviceId = (v >= 1 && v <= 99) ? v : null;
+            } else {
+                deviceId = null;
+            }
+        } else {
+            deviceId = null;
+        }
+
+        input.value = (deviceId === null) ? '' : String(deviceId);
+    } catch (e) {
+        // ignore
+    }
+}
+
+async function saveMdnsId() {
+    const input = document.getElementById('mdnsIdInput');
+    const btn = document.getElementById('saveMdnsBtn');
+    if (!input) return;
+
+    const raw = (input.value || '').trim();
+    if (raw === '') {
+        deviceId = null;
+    } else {
+        if (!/^\d+$/.test(raw)) {
+            alert('Bitte eine Zahl von 1 bis 99 eingeben (oder leer lassen).');
+            return;
+        }
+        const v = parseInt(raw, 10);
+        if (!(v >= 1 && v <= 99)) {
+            alert('Bitte eine Zahl von 1 bis 99 eingeben (oder leer lassen).');
+            return;
+        }
+        deviceId = v;
+    }
+
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = '...';
+    }
+
+    try {
+        const resp = await fetch('/mdns', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: deviceId })
+        });
+
+        if (!resp.ok) {
+            const msg = await resp.text();
+            alert(msg || 'Fehler beim Speichern');
+            return;
+        }
+
+        alert('Geräte-ID gespeichert. Wirkt beim nächsten Boot.');
+        await loadMdnsId();
+    } catch (e) {
+        alert('Fehler beim Speichern');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Speichern';
+        }
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     // Theme Logic
     const toggle = document.getElementById('themeToggle');
@@ -23,6 +108,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    loadMdnsId();
     fetchNetworks();
 });
 

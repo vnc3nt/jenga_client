@@ -60,6 +60,9 @@ void initialize_gpios() {
     gpio_set_direction(PAUSE_LED_PIN, GPIO_MODE_OUTPUT);
     gpio_set_direction(POWER_LED_PIN, GPIO_MODE_OUTPUT);
     gpio_set_direction(CONNECTION_LED_PIN, GPIO_MODE_OUTPUT);
+
+    // Default LED states
+    gpio_set_level(CONNECTION_LED_PIN, 0);
     
     // Als Input setzen (mit Pullup, da wir auf LOW prüfen)
     gpio_set_direction(PAUSE_PIN, GPIO_MODE_INPUT);
@@ -357,28 +360,15 @@ extern "C" void app_main(void) {
     ESP_LOGI(TAG, "Starte Game Loop. Modus A (Countdown). Zeit: %lld ms", time_countdown);
 
     while(1) {
-        // Check Connection Status for LED
-        wifi_ap_record_t ap_info;
-        bool is_connected = (esp_wifi_sta_get_ap_info(&ap_info) == ESP_OK);
-
         if (is_in_config_mode) {
-            // Im Konfigurationsmodus
-            if (is_connected) {
-                gpio_set_level(CONNECTION_LED_PIN, 1); // Dauerhaft AN wenn verbunden
-            } else {
-                // Schnelles Blinken wenn nicht verbunden
-                led_state = !led_state;
-                gpio_set_level(CONNECTION_LED_PIN, led_state);
-            }
+            // Im Konfigurationsmodus: Schnelles Blinken
+            led_state = !led_state;
+            gpio_set_level(CONNECTION_LED_PIN, led_state);
             vTaskDelay(pdMS_TO_TICKS(100));
         }
         else {
             // --- IM SPIELMODUS ---
-            if (is_connected) {
-                gpio_set_level(CONNECTION_LED_PIN, 1); // Dauerhaft AN wenn verbunden
-            } else {
-                gpio_set_level(CONNECTION_LED_PIN, 0); // AUS wenn nicht verbunden
-            }
+            gpio_set_level(CONNECTION_LED_PIN, 0);
             
             // 1. Zeitberechnung (Delta Time)
             int64_t current_time = esp_timer_get_time();

@@ -18,28 +18,74 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "cJSON.h"
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 
 static const char *TAG = "wss_server";
 
-// --- HINZUFÜGEN: mDNS Implementierung ---
+static bool mdns_hostname_in_use(const char *hostname, uint32_t timeout_ms)
+{
+    esp_ip4_addr_t addr4 = {};
+    esp_ip6_addr_t addr6 = {};
+
+    // Falls im Netz bereits ein Host mit diesem Namen existiert, beantwortet er die mDNS A/AAAA Query.
+    if (mdns_query_a(hostname, timeout_ms, &addr4) == ESP_OK) {
+        return true;
+    }
+    if (mdns_query_aaaa(hostname, timeout_ms, &addr6) == ESP_OK) {
+        return true;
+    }
+    return false;
+}
+
+static void mdns_select_hostname(char *out_hostname, size_t out_len)
+{
+    // Vorgabe: jenga1.local, jenga2.local, ...
+    // Wir speichern ohne ".local" (mdns_hostname_set hängt .local implizit an).
+    static constexpr uint32_t kProbeTimeoutMs = 250;
+    static constexpr int kMaxIndex = 99;
+
+    for (int i = 1; i <= kMaxIndex; ++i) {
+        char candidate[32];
+        snprintf(candidate, sizeof(candidate), "jenga%d", i);
+        if (!mdns_hostname_in_use(candidate, kProbeTimeoutMs)) {
+            strlcpy(out_hostname, candidate, out_len);
+            return;
+        }
+    }
+
+    // Sehr unwahrscheinlich – aber falls 1..99 belegt sind.
+    strlcpy(out_hostname, "jenga99", out_len);
+}
+
+// --- mDNS Implementierung ---
 void initialise_mdns(void)
 {
     ESP_LOGI(TAG, "Initialisiere mDNS...");
     esp_err_t err = mdns_init();
-    if (err) {
+    if (err != ESP_OK) {
         ESP_LOGE(TAG, "MDNS Init fehlgeschlagen: %d", err);
         return;
     }
-    // Hostname setzen: jenga3 -> jenga3.local
-    mdns_hostname_set("jenga3");
+
+    char hostname[32];
+    mdns_select_hostname(hostname, sizeof(hostname));
+
+    err = mdns_hostname_set(hostname);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "mDNS Hostname setzen fehlgeschlagen: %d", err);
+        return;
+    }
+
     mdns_instance_name_set("Jenga ESP32 Webserver");
-    
+
     // Service bekanntgeben (optional, hilft aber Discovery-Tools)
     mdns_service_add(NULL, "_http", "_tcp", 80, NULL, 0);
-    
-    ESP_LOGI(TAG, "mDNS gestartet. Erreichbar unter: http://jenga3.local");
+
+    ESP_LOGI(TAG, "mDNS gestartet. Erreichbar unter: http://%s.local", hostname);
 }
-// ----------------------------------------
+// ---------------------------
 
 // --- EXTERNE API FUNKTIONEN (aus main.cpp) ---
 // Damit wir von hier aus die Spiellogik steuern können
@@ -196,7 +242,6 @@ void wss_close_fd(httpd_handle_t hd, int sockfd)
     ESP_LOGI(TAG, "Client disconnected %d", sockfd);
     wss_keep_alive_t h = (wss_keep_alive_t)httpd_get_global_user_ctx(hd);
     wss_keep_alive_remove_client(h, sockfd);
-    close(sockfd);
 }
 
 static const httpd_uri_t ws = {
@@ -310,28 +355,20 @@ static esp_err_t favicon_handler(httpd_req_t *req) {
 // --- SERVER START ---
 static httpd_handle_t start_wss_echo_server(void)
 {
-    // 1. Keep-Alive Konfiguration ENTFERNEN
-    /*
     wss_keep_alive_config_t keep_alive_config = KEEP_ALIVE_CONFIG_DEFAULT();
     keep_alive_config.max_clients = max_clients;
     keep_alive_config.client_not_alive_cb = client_not_alive_cb;
     keep_alive_config.check_client_alive_cb = check_client_alive_cb;
     wss_keep_alive_t keep_alive = wss_keep_alive_start(&keep_alive_config);
-    */
 
     httpd_handle_t server = NULL;
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.server_port = 80;
     config.max_open_sockets = max_clients;
     
-    // 2. User Context und Callbacks VEREINFACHEN
-    config.global_user_ctx = NULL; // War: keep_alive
-    
-    // Wir brauchen open/close nicht zwingend für die Funktion, 
-    // aber wenn du Logs willst, kannst du einfache Handler schreiben.
-    // Um Fehlerquellen auszuschließen, setzen wir sie vorerst auf NULL oder Standard.
-    config.open_fn = NULL;  // War: wss_open_fd
-    config.close_fn = NULL; // War: wss_close_fd
+    config.global_user_ctx = keep_alive;
+    config.open_fn = wss_open_fd;
+    config.close_fn = wss_close_fd;
     
     config.max_uri_handlers = 12;
 
@@ -340,8 +377,7 @@ static httpd_handle_t start_wss_echo_server(void)
         return NULL;
     }
 
-    // 3. Keep-Alive Context Setzen ENTFERNEN
-    // wss_keep_alive_set_user_ctx(keep_alive, server);
+    wss_keep_alive_set_user_ctx(keep_alive, server);
 
     // URIs registrieren
     httpd_register_uri_handler(server, &ws);
