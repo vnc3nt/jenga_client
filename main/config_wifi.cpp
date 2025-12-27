@@ -4,6 +4,10 @@
 #include "esp_log.h"
 #include "esp_netif.h"
 #include "esp_http_server.h"
+#include "esp_system.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/event_groups.h"
 #include "lwip/dns.h"
 #include "lwip/sockets.h"
 #include "lwip/netdb.h"
@@ -15,6 +19,21 @@
 static const char *TAG = "CONFIG_WIFI";
 static httpd_handle_t config_server = NULL;
 
+// --- WiFi connect control ---
+static EventGroupHandle_t s_wifi_event_group = NULL;
+static esp_event_handler_instance_t s_wifi_instance_any_id = NULL;
+static esp_event_handler_instance_t s_ip_instance_got_ip = NULL;
+static int s_boot_retry_num = 0;
+static bool s_boot_phase = false;
+static bool s_reconnect_enabled = false;
+
+static const EventBits_t WIFI_CONNECTED_BIT = BIT0;
+static const EventBits_t WIFI_FAIL_BIT = BIT1;
+
+// Forward declarations
+static void wifi_event_handler(void* arg, esp_event_base_t event_base,
+                               int32_t event_id, void* event_data);
+
 // --- EINGEBETTETE DATEIEN (Deklarationen) ---
 extern const unsigned char config_html_start[] asm("_binary_config_html_start");
 extern const unsigned char config_html_end[] asm("_binary_config_html_end");
@@ -23,16 +42,74 @@ extern const unsigned char config_js_end[] asm("_binary_config_js_end");
 extern const unsigned char style_css_start[] asm("_binary_style_css_start");
 extern const unsigned char style_css_end[] asm("_binary_style_css_end");
 
+static void register_wifi_handlers()
+{
+    if (s_wifi_event_group == NULL) {
+        s_wifi_event_group = xEventGroupCreate();
+    }
+
+    if (s_wifi_instance_any_id == NULL) {
+        ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
+                                                            ESP_EVENT_ANY_ID,
+                                                            &wifi_event_handler,
+                                                            NULL,
+                                                            &s_wifi_instance_any_id));
+    }
+    if (s_ip_instance_got_ip == NULL) {
+        ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT,
+                                                            IP_EVENT_STA_GOT_IP,
+                                                            &wifi_event_handler,
+                                                            NULL,
+                                                            &s_ip_instance_got_ip));
+    }
+}
+
+// --- EVENT HANDLER ---
+static void wifi_event_handler(void* arg, esp_event_base_t event_base,
+                               int32_t event_id, void* event_data)
+{
+    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
+        if (!s_reconnect_enabled) {
+            return;
+        }
+
+        if (s_boot_phase) {
+            if (s_boot_retry_num < 3) {
+                s_boot_retry_num++;
+                ESP_LOGW(TAG, "WiFi disconnected during boot. Retry %d/3", s_boot_retry_num);
+                esp_wifi_connect();
+            } else {
+                ESP_LOGW(TAG, "WiFi boot retries exceeded. Giving up.");
+                xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
+            }
+        } else {
+            // Runtime reconnect: keep trying forever
+            ESP_LOGI(TAG, "WiFi disconnected at runtime. Reconnecting...");
+            esp_wifi_connect();
+        }
+        return;
+    }
+
+    if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
+        s_boot_retry_num = 0;
+        s_boot_phase = false;
+        xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
+        return;
+    }
+}
+
 // --- HANDLER ---
 
 // Scan Handler
 static esp_err_t scan_handler(httpd_req_t *req) {
-    wifi_scan_config_t scan_config = {
-        .ssid = 0,
-        .bssid = 0,
-        .channel = 0,
-        .show_hidden = true
-    };
+    wifi_scan_config_t scan_config = {};
+    scan_config.ssid = 0;
+    scan_config.bssid = 0;
+    scan_config.channel = 0;
+    scan_config.show_hidden = true;
+    scan_config.scan_type = WIFI_SCAN_TYPE_ACTIVE;
+    scan_config.scan_time.active.min = 100;
+    scan_config.scan_time.active.max = 300;
 
     esp_err_t err = esp_wifi_scan_start(&scan_config, true);
     if (err != ESP_OK) {
@@ -71,23 +148,36 @@ static esp_err_t scan_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
-// Saved Network Handler
-static esp_err_t get_saved_handler(httpd_req_t *req) {
+// Status Handler
+static esp_err_t status_handler(httpd_req_t *req) {
+    cJSON *root = cJSON_CreateObject();
+    
+    // 1. Check Connection
+    wifi_ap_record_t ap_info;
+    if (esp_wifi_sta_get_ap_info(&ap_info) == ESP_OK) {
+        cJSON_AddBoolToObject(root, "connected", true);
+        cJSON_AddStringToObject(root, "connected_ssid", (char *)ap_info.ssid);
+        cJSON_AddNumberToObject(root, "rssi", ap_info.rssi);
+    } else {
+        cJSON_AddBoolToObject(root, "connected", false);
+    }
+
+    // 2. Check Saved
     nvs_handle_t my_handle;
-    esp_err_t err = nvs_open("storage", NVS_READONLY, &my_handle);
-    char ssid[33] = {0};
-    if (err == ESP_OK) {
+    if (nvs_open("storage", NVS_READONLY, &my_handle) == ESP_OK) {
+        char ssid[33] = {0};
         size_t required_size = sizeof(ssid);
-        nvs_get_str(my_handle, "wifi_ssid", ssid, &required_size);
+        if (nvs_get_str(my_handle, "wifi_ssid", ssid, &required_size) == ESP_OK) {
+            cJSON_AddStringToObject(root, "saved_ssid", ssid);
+        }
         nvs_close(my_handle);
     }
-    cJSON *root = cJSON_CreateObject();
-    cJSON_AddStringToObject(root, "ssid", ssid);
-    char *json_response = cJSON_PrintUnformatted(root);
+
+    char *json_str = cJSON_PrintUnformatted(root);
     httpd_resp_set_type(req, "application/json");
-    httpd_resp_send(req, json_response, strlen(json_response));
+    httpd_resp_send(req, json_str, strlen(json_str));
+    free(json_str);
     cJSON_Delete(root);
-    free(json_response);
     return ESP_OK;
 }
 
@@ -99,6 +189,10 @@ static esp_err_t forget_handler(httpd_req_t *req) {
         nvs_erase_key(my_handle, "wifi_pass");
         nvs_commit(my_handle);
         nvs_close(my_handle);
+        
+        // Disconnect immediately
+        esp_wifi_disconnect();
+        
         httpd_resp_send(req, "OK", 2);
     } else {
         httpd_resp_send_500(req);
@@ -124,12 +218,40 @@ static esp_err_t save_handler(httpd_req_t *req) {
         ESP_ERROR_CHECK(nvs_set_str(my_handle, "wifi_pass", pass->valuestring));
         ESP_ERROR_CHECK(nvs_commit(my_handle));
         nvs_close(my_handle);
-        httpd_resp_send(req, "OK", 2);
+
+        // Configure and connect to wifi immediately
+        // WICHTIG: Erst trennen, damit der neue Versuch sauber startet
+        esp_wifi_disconnect();
+        vTaskDelay(pdMS_TO_TICKS(500)); // Wartezeit erhöht
+
+        wifi_config_t wifi_config = {};
+        strncpy((char*)wifi_config.sta.ssid, ssid->valuestring, sizeof(wifi_config.sta.ssid));
+        strncpy((char*)wifi_config.sta.password, pass->valuestring, sizeof(wifi_config.sta.password));
         
-        vTaskDelay(pdMS_TO_TICKS(1000));
-        esp_restart();
+        ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
+
+        // In config mode: try connecting, but don't loop forever on wrong password.
+        register_wifi_handlers();
+        s_boot_retry_num = 0;
+        s_boot_phase = true;            // reuse boot-phase retry limit
+        s_reconnect_enabled = true;
+        xEventGroupClearBits(s_wifi_event_group, WIFI_CONNECTED_BIT | WIFI_FAIL_BIT);
+
+        esp_wifi_connect();
+
+        httpd_resp_send(req, "OK", 2);
     }
     cJSON_Delete(root);
+    return ESP_OK;
+}
+
+// Restart Handler
+static esp_err_t restart_handler(httpd_req_t *req) {
+    ESP_LOGI(TAG, "Restart requested via WebUI");
+    httpd_resp_send(req, "OK", 2);
+    // Allow time for the response to be sent
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    esp_restart();
     return ESP_OK;
 }
 
@@ -259,8 +381,9 @@ void start_config_server() {
         register_uri(config_server, "/style.css", HTTP_GET, style_css_handler);
         register_uri(config_server, "/scan", HTTP_GET, scan_handler);
         register_uri(config_server, "/save", HTTP_POST, save_handler);
-        register_uri(config_server, "/saved", HTTP_GET, get_saved_handler);
+        register_uri(config_server, "/status", HTTP_GET, status_handler);
         register_uri(config_server, "/forget", HTTP_POST, forget_handler);
+        register_uri(config_server, "/restart", HTTP_POST, restart_handler);
 
         // Captive Portal Redirects
         register_uri(config_server, "/generate_204", HTTP_GET, captive_portal_handler);
@@ -271,11 +394,25 @@ void start_config_server() {
 
 void start_config_wifi(void) {
     ESP_LOGI(TAG, "Starting WiFi AP for configuration...");
-    
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    esp_wifi_init(&cfg);
 
+    // In config mode we don't want background STA connect loops.
+    s_reconnect_enabled = false;
+    s_boot_phase = false;
+    s_boot_retry_num = 0;
+    register_wifi_handlers();
+
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    esp_err_t err = esp_wifi_init(&cfg);
+    if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
+        ESP_ERROR_CHECK(err);
+    }
+
+    ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_APSTA));
+
+    // Clear STA config so APSTA doesn't try to auto-connect with stale creds
+    wifi_config_t sta_config = {};
+    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &sta_config));
 
     wifi_config_t ap_config = {}; 
     
@@ -318,8 +455,15 @@ bool connect_saved_wifi(void) {
     nvs_get_str(my_handle, "wifi_pass", pass, &p_len);
     nvs_close(my_handle);
 
+    register_wifi_handlers();
+
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    esp_wifi_init(&cfg);
+    esp_err_t init_err = esp_wifi_init(&cfg);
+    if (init_err != ESP_OK && init_err != ESP_ERR_INVALID_STATE) {
+        ESP_ERROR_CHECK(init_err);
+    }
+
+    ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
     
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA)); 
     
@@ -329,18 +473,36 @@ bool connect_saved_wifi(void) {
     
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
-    
-    ESP_LOGI(TAG, "Connecting to %s...", ssid);
-    esp_wifi_connect();
-    
-    int retry = 0;
-    while (retry < 20) {
-        vTaskDelay(pdMS_TO_TICKS(500));
-        wifi_ap_record_t ap_info;
-        if (esp_wifi_sta_get_ap_info(&ap_info) == ESP_OK) {
-            return true;
-        }
-        retry++;
+
+    // Boot connect: max 3 retries. If it fails -> caller will enter config mode.
+    s_boot_retry_num = 0;
+    s_boot_phase = true;
+    s_reconnect_enabled = true;
+
+    xEventGroupClearBits(s_wifi_event_group, WIFI_CONNECTED_BIT | WIFI_FAIL_BIT);
+
+    ESP_LOGI(TAG, "Connecting to %s (boot)...", ssid);
+    ESP_ERROR_CHECK(esp_wifi_connect());
+
+    EventBits_t bits = xEventGroupWaitBits(
+        s_wifi_event_group,
+        WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
+        pdFALSE,
+        pdFALSE,
+        pdMS_TO_TICKS(15000));
+
+    if (bits & WIFI_CONNECTED_BIT) {
+        // Success. From now on: runtime reconnects are allowed.
+        s_boot_phase = false;
+        s_reconnect_enabled = true;
+        return true;
     }
+
+    // Fail or timeout -> stop trying and clean up WiFi before switching to config mode
+    ESP_LOGW(TAG, "WiFi connect failed at boot (ssid=%s). Switching to config mode.", ssid);
+    s_reconnect_enabled = false;
+    s_boot_phase = false;
+    esp_wifi_stop();
+    esp_wifi_deinit();
     return false;
 }

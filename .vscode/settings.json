@@ -1,6 +1,6 @@
 {
   "C_Cpp.intelliSenseEngine": "default",
-  "idf.port": "/dev/tty.usbmodem101",
+  "idf.port": "/dev/tty.usbmodem1101",
   "idf.adapterTargetName": "esp32s3",
   "idf.flashBaudRate": "115200",
   "idf.flashSize": "16MB",

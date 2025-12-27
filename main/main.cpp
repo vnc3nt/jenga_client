@@ -46,7 +46,6 @@ uint32_t countdown_start_value = 5 * 60 * 1000; // Standard 5 Minuten
 // Hilfsvariablen für Flankenerkennung
 bool last_robot_pin_state = false;
 
-
 httpd_handle_t server_handle = NULL;
 
 void initialize_gpios() {
@@ -199,7 +198,6 @@ int64_t api_get_time_countdown() { return time_countdown; }
 int64_t api_get_time_countup() { return time_countup; }
 bool api_get_is_paused() { return is_paused; }
 int api_get_game_mode() { return (int)current_game_mode; }
-
 
 // --- LOGIK FUNKTIONEN ---
 
@@ -359,14 +357,28 @@ extern "C" void app_main(void) {
     ESP_LOGI(TAG, "Starte Game Loop. Modus A (Countdown). Zeit: %lld ms", time_countdown);
 
     while(1) {
+        // Check Connection Status for LED
+        wifi_ap_record_t ap_info;
+        bool is_connected = (esp_wifi_sta_get_ap_info(&ap_info) == ESP_OK);
+
         if (is_in_config_mode) {
-            // Im Konfigurationsmodus: Schnelles Blinken
-            led_state = !led_state;
-            gpio_set_level(CONNECTION_LED_PIN, led_state);
+            // Im Konfigurationsmodus
+            if (is_connected) {
+                gpio_set_level(CONNECTION_LED_PIN, 1); // Dauerhaft AN wenn verbunden
+            } else {
+                // Schnelles Blinken wenn nicht verbunden
+                led_state = !led_state;
+                gpio_set_level(CONNECTION_LED_PIN, led_state);
+            }
             vTaskDelay(pdMS_TO_TICKS(100));
         }
         else {
             // --- IM SPIELMODUS ---
+            if (is_connected) {
+                gpio_set_level(CONNECTION_LED_PIN, 1); // Dauerhaft AN wenn verbunden
+            } else {
+                gpio_set_level(CONNECTION_LED_PIN, 0); // AUS wenn nicht verbunden
+            }
             
             // 1. Zeitberechnung (Delta Time)
             int64_t current_time = esp_timer_get_time();
@@ -444,4 +456,3 @@ extern "C" void app_main(void) {
         }   
     }
 }
-
