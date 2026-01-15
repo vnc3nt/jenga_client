@@ -1,7 +1,7 @@
 {
     "version":            "1.2",
     "project_name":       "jenga_client",
-    "project_version":    "a81e6ca-dirty",
+    "project_version":    "eb86bf7-dirty",
     "project_path":       "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/jenga_client",
     "idf_path":           "/Users/vnc3nt/esp/esp-idf",
     "build_dir":          "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/jenga_client/build",

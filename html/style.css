@@ -854,6 +854,19 @@ body.dark .slider:hover {
     background-color: #4b5563;
 }
 
+input:disabled + .slider {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+input:disabled + .slider:hover {
+    background-color: #e5e7eb; /* No hover effect */
+}
+
+body.dark input:disabled + .slider:hover {
+    background-color: #374151; /* No hover effect in dark mode */
+}
+
 .slider:before {
     position: absolute;
     content: "";

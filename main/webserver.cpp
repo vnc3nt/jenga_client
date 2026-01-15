@@ -42,6 +42,35 @@ static bool mdns_hostname_in_use(const char *hostname, uint32_t timeout_ms)
 
 static void mdns_select_hostname(char *out_hostname, size_t out_len)
 {
+    // 1. Zuerst im NVS nach fester Konfiguration suchen
+    nvs_handle_t my_handle;
+    if (nvs_open("storage", NVS_READONLY, &my_handle) == ESP_OK) {
+        int32_t val = 0;
+        bool found = false;
+        
+        // Priorität: Neuer numerischer Key "jenga_id"
+        if (nvs_get_i32(my_handle, "jenga_id", &val) == ESP_OK) {
+            found = true;
+        } 
+        // Fallback: Alter String Key "mdns_id"
+        else {
+            char buf[16] = {0};
+            size_t s = sizeof(buf);
+            if (nvs_get_str(my_handle, "mdns_id", buf, &s) == ESP_OK) {
+                val = atoi(buf);
+                if (val > 0) found = true;
+            }
+        }
+        nvs_close(my_handle);
+
+        if (found && val >= 1 && val <= 99) {
+            snprintf(out_hostname, out_len, "jenga%d", (int)val);
+            ESP_LOGI(TAG, "Verwende feste Geräte-ID aus NVS: %s", out_hostname);
+            return;
+        }
+    }
+
+    // 2. Keine ID gefunden -> Auto-Scan (jenga1..99)
     // Vorgabe: jenga1.local, jenga2.local, ...
     // Wir speichern ohne ".local" (mdns_hostname_set hängt .local implizit an).
     static constexpr uint32_t kProbeTimeoutMs = 250;
@@ -337,8 +366,23 @@ esp_err_t wss_open_fd(httpd_handle_t hd, int sockfd)
 void wss_close_fd(httpd_handle_t hd, int sockfd)
 {
     ESP_LOGI(TAG, "Client disconnected %d", sockfd);
+    
+    // 1. Aus Keep-Alive Liste entfernen
     wss_keep_alive_t h = (wss_keep_alive_t)httpd_get_global_user_ctx(hd);
-    wss_keep_alive_remove_client(h, sockfd);
+    if (h) {
+        wss_keep_alive_remove_client(h, sockfd);
+    }
+
+    // 2. "Kill it with fire" - Taktik:
+    // Wir sagen dem TCP-Stack, er soll nicht warten (kein TIME_WAIT),
+    // sondern die Verbindung sofort hart beenden (RST).
+    struct linger l;
+    l.l_onoff = 1;
+    l.l_linger = 0;
+    setsockopt(sockfd, SOL_SOCKET, SO_LINGER, &l, sizeof(l));
+
+    // 3. WICHTIG: Den Socket tatsächlich schließen!
+    close(sockfd); 
 }
 
 static const httpd_uri_t ws = {
@@ -379,12 +423,14 @@ bool check_client_alive_cb(wss_keep_alive_t h, int fd)
 {
     struct async_resp_arg *resp_arg = (struct async_resp_arg *)malloc(sizeof(struct async_resp_arg));
     assert(resp_arg != NULL);
-    resp_arg->hd = wss_keep_alive_get_user_ctx(h);
+    resp_arg->hd = (httpd_handle_t)wss_keep_alive_get_user_ctx(h);
     resp_arg->fd = fd;
 
     if (httpd_queue_work(resp_arg->hd, send_ping, resp_arg) == ESP_OK) {
         return true;
     }
+
+    free(resp_arg);
     return false;
 }
 
@@ -400,6 +446,9 @@ static esp_err_t index_handler(httpd_req_t *req) {
 static esp_err_t style_handler(httpd_req_t *req) {
     ESP_LOGI(TAG, "Serving style.css"); // <--- DIESE ZEILE HINZUFÜGEN
     httpd_resp_set_type(req, "text/css");
+    // Cache für 1 Jahr (31536000 Sekunden)
+    httpd_resp_set_hdr(req, "Cache-Control", "public, max-age=31536000"); 
+
     extern const unsigned char style_css_start[] asm("_binary_style_css_start");
     extern const unsigned char style_css_end[] asm("_binary_style_css_end");
     const size_t style_css_size = (style_css_end - style_css_start);
@@ -408,6 +457,9 @@ static esp_err_t style_handler(httpd_req_t *req) {
 
 static esp_err_t main_js_handler(httpd_req_t *req) {
     httpd_resp_set_type(req, "text/javascript");
+    // Cache für 1 Jahr
+    httpd_resp_set_hdr(req, "Cache-Control", "public, max-age=31536000");
+
     extern const unsigned char main_js_start[] asm("_binary_main_js_start");
     extern const unsigned char main_js_end[] asm("_binary_main_js_end");
     const size_t main_js_size = (main_js_end - main_js_start);
@@ -416,6 +468,9 @@ static esp_err_t main_js_handler(httpd_req_t *req) {
 
 static esp_err_t sun_moon_handler(httpd_req_t *req) {
     httpd_resp_set_type(req, "image/png");
+    // Cache für 1 Jahr
+    httpd_resp_set_hdr(req, "Cache-Control", "public, max-age=31536000");
+
     extern const unsigned char img_sun_moon_png_start[] asm("_binary_sun_moon_png_start");
     extern const unsigned char img_sun_moon_png_end[] asm("_binary_sun_moon_png_end");
     const size_t img_sun_moon_png_size = (img_sun_moon_png_end - img_sun_moon_png_start);
@@ -461,7 +516,7 @@ static httpd_handle_t start_wss_echo_server(void)
     httpd_handle_t server = NULL;
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.server_port = 80;
-    config.max_open_sockets = max_open_sockets;
+    config.max_open_sockets = 12; // Reduziert von 16 auf 12. Das zwingt den ESP, alte Sockets früher zu kicken.
     config.lru_purge_enable = true;
     // Browser-Refresh-Spam: HTTP Keep-Alive aus -> Sockets werden schneller frei.
     config.keep_alive_enable = false;

@@ -104,23 +104,49 @@ void stop_config_mode() {
 }
 
 void shutdown_esp() {
-  ESP_LOGW(TAG, "Shutdown eingeleitet...");
-  if (server_handle != NULL) {
-    httpd_stop(server_handle);
-  }
-  
-  // Konfigurieren Sie den Aufwach-Mechanismus
-  esp_sleep_enable_ext0_wakeup(PAUSE_PIN, 0); // Aufwachen bei LOW-Signal
-  
-  gpio_set_level(POWER_LED_PIN, 0); // Power-LED aus
-
-  while (gpio_get_level(PAUSE_PIN) == 0)
-    {
-        vTaskDelay(pdMS_TO_TICKS(10));
+    ESP_LOGW(TAG, "Gehe in den Standby (Light Sleep)...");
+    
+    // 1. Webserver stoppen, um Sauberkeit zu wahren
+    if (server_handle != NULL) {
+        httpd_stop(server_handle);
+        server_handle = NULL;
     }
 
-  // Gehen Sie in den Deep-Sleep-Modus
-  esp_deep_sleep_start();
+    // 2. WiFi stoppen spart viel Strom
+    esp_wifi_stop();
+    
+    // 3. LEDs aus
+    gpio_set_level(POWER_LED_PIN, 0); 
+    gpio_set_level(PAUSE_LED_PIN, 0);
+    gpio_set_level(CONNECTION_LED_PIN, 0);
+
+    // 4. Warten, bis der Knopf losgelassen wurde (sonst wacht er sofort wieder auf)
+    while (gpio_get_level(PAUSE_PIN) == 0) {
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+    // Kurzes Debounce Delay
+    vTaskDelay(pdMS_TO_TICKS(50));
+
+    // 5. Wakeup konfigurieren (Funktioniert mit JEDEM Pin im Light Sleep)
+    // GPIO_INTR_LOW_LEVEL: Wacht auf, wenn Pin auf GND gezogen wird
+    gpio_wakeup_enable(PAUSE_PIN, GPIO_INTR_LOW_LEVEL);
+    
+    // Wakeup-Quelle aktivieren
+    esp_sleep_enable_gpio_wakeup();
+
+    // 6. Gute Nacht (Light Sleep)
+    // Der Code pausiert hier, bis der Knopf gedrückt wird.
+    esp_light_sleep_start();
+
+    // ---------------------------------------------------------
+    // HIER landet der Code sofort nach dem Aufwachen!
+    // ---------------------------------------------------------
+    
+    ESP_LOGI(TAG, "Aufgewacht! Führe Neustart durch...");
+    
+    // Da Deep Sleep normalerweise alles resetet, simulieren wir das hier,
+    // damit Ihre Logik in app_main() sauber von vorne beginnt.
+    esp_restart();
 }
 
 // --- NVS FUNKTIONEN (Angepasst) ---
