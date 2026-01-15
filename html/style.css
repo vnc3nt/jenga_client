@@ -263,7 +263,7 @@ button:disabled {
 .leaderboard-container {
     background-color: #f3f4f6;
     padding: 1.5rem;
-    padding-top: 3.5rem; /* Space for the buttons */
+    /* padding-top: 3.5rem; REMOVED */
     border-radius: 0.75rem;
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
     order: 3;
@@ -281,7 +281,7 @@ body.dark .leaderboard-container {
 .leaderboard-title {
     text-align: center;
     margin: 0;
-    margin-top: 0.2rem;
+    /* margin-top: 0.2rem; REMOVED */
     font-size: 1.25rem;
     font-weight: 600;
     color: #111827;
@@ -305,18 +305,25 @@ body.dark .leaderboard-title {
     border-radius: 0;
     margin: 0;
     padding: 2rem;
-    padding-top: 4rem;
+    /* padding-top: 4rem; REMOVED */
     overflow-y: auto;
 }
 
 .leaderboard-header-controls {
-    display: contents; /* Just a wrapper for logic, let children float */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    width: 100%;
+    margin-bottom: 1rem;
+    min-height: 40px;
 }
 
 /* Absolute Buttons in Leaderboard Header */
 .btn-icon-abs {
     position: absolute;
-    top: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
     background: transparent;
     border: none;
     cursor: pointer;
@@ -344,11 +351,11 @@ body.dark .btn-icon-abs:hover {
 }
 
 .btn-icon-abs.top-right {
-    right: 1rem;
+    right: 0;
 }
 
 .btn-icon-abs.top-left {
-    left: 1rem;
+    left: 0;
 }
 
 .leaderboard-list {
@@ -421,12 +428,26 @@ body.dark .leaderboard-item {
 
 .leaderboard-info {
     flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 
 .leaderboard-name {
     font-weight: 500;
     color: #111827;
     font-size: 0.875rem;
+}
+
+.team-stats {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    color: #6b7280;
+}
+.team-stats svg {
+    display: block;
 }
 
 body.dark .leaderboard-name {
@@ -823,7 +844,7 @@ body.dark .slider:hover {
     position: absolute;
     content: "";
     height: 38px; /* 48px Höhe - 5px Padding oben/unten */
-    width: 115px; /* Hälfte der Breite minus Padding */
+    width: calc(50% - 10px); /* Responsive width (50% minus padding on both sides) */
     left: 5px;
     bottom: 5px;
     background-color: white;
@@ -838,9 +859,11 @@ body.dark .slider:before {
 }
 
 /* Wenn Checkbox gecheckt (Count up) */
+/* Updated for Responsive Width */
 input:checked + .slider:before {
-    transform: translateX(115px);
+    transform: translateX(100%);
 }
+
 
 /* Text Labels */
 .label-text {
