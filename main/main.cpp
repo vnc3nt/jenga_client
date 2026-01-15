@@ -15,6 +15,10 @@
 #include "esp_netif.h"
 #include "esp_event.h"
 #include "esp_wifi.h"
+#include <vector>
+#include <string>
+#include <string.h>
+#include <algorithm>
 
 #include "global_vars.h"
 #include "nvs_flash.h"
@@ -34,6 +38,18 @@ bool still_startup_holding = true;
 bool is_in_config_mode = false;
 
 // --- NEUE SPIEL VARIABLEN ---
+struct LeaderboardEntry {
+    char team_name[32];
+    int64_t time_ms;
+    int moves;
+    bool tower_fell;
+    uint32_t entry_id; // Unique ID (Random)
+    int64_t timestamp; // Zeitstempel (Uptime in ms bei Erstellung)
+};
+
+std::vector<LeaderboardEntry> leaderboard_countdown;
+std::vector<LeaderboardEntry> leaderboard_countup;
+
 enum GameMode { MODE_A_COUNTDOWN, MODE_B_COUNTUP };
 GameMode current_game_mode = MODE_A_COUNTDOWN;
 
@@ -41,6 +57,7 @@ volatile int piece_counter = 0;
 volatile int64_t time_countdown = 0; // in Millisekunden (int64 für einfache Berechnung)
 volatile int64_t time_countup = 0;   // in Millisekunden
 volatile bool is_paused = true;      // Startet pausiert
+char current_team_name[32] = "";     // NEU: Aktueller Teamname
 uint32_t countdown_start_value = 5 * 60 * 1000; // Standard 5 Minuten
 
 // Hilfsvariablen für Flankenerkennung
@@ -136,6 +153,68 @@ uint32_t load_countdown_start(uint32_t default_value) {
     return val;
 }
 
+// --- NVS: TEAM NAME & LEADERBOARD ---
+void save_team_name_nvs(const char* name) {
+    nvs_handle_t my_handle;
+    if (nvs_open("storage", NVS_READWRITE, &my_handle) != ESP_OK) return;
+    nvs_set_str(my_handle, "team_name", name);
+    nvs_commit(my_handle);
+    nvs_close(my_handle);
+}
+
+void load_team_name_nvs(char* buf, size_t len) {
+    nvs_handle_t my_handle;
+    if (nvs_open("storage", NVS_READONLY, &my_handle) != ESP_OK) return;
+    size_t required_size = 0;
+    if (nvs_get_str(my_handle, "team_name", NULL, &required_size) == ESP_OK) {
+        if (required_size <= len) {
+             nvs_get_str(my_handle, "team_name", buf, &required_size);
+        }
+    }
+    nvs_close(my_handle);
+}
+
+void save_leaderboards_nvs() {
+    nvs_handle_t my_handle;
+    if (nvs_open("storage", NVS_READWRITE, &my_handle) != ESP_OK) return;
+
+    // Countdown (max 1KB blob just to be safe, though vector can be large. NVS key max val is 4000ish bytes usually fine for top 10)
+    // We only save up to 20 entries to prevent overflow
+    if (leaderboard_countdown.size() > 20) leaderboard_countdown.resize(20);
+    nvs_set_blob(my_handle, "lb_cd", leaderboard_countdown.data(), leaderboard_countdown.size() * sizeof(LeaderboardEntry));
+    
+    // Countup
+    if (leaderboard_countup.size() > 20) leaderboard_countup.resize(20);
+    nvs_set_blob(my_handle, "lb_cu", leaderboard_countup.data(), leaderboard_countup.size() * sizeof(LeaderboardEntry));
+
+    nvs_commit(my_handle);
+    nvs_close(my_handle);
+    ESP_LOGI(TAG, "Leaderboards saved to NVS.");
+}
+
+void load_leaderboards_nvs() {
+    nvs_handle_t my_handle;
+    if (nvs_open("storage", NVS_READONLY, &my_handle) != ESP_OK) return;
+
+    size_t required_size = 0;
+    // Countdown
+    if (nvs_get_blob(my_handle, "lb_cd", NULL, &required_size) == ESP_OK && required_size > 0) {
+        size_t count = required_size / sizeof(LeaderboardEntry);
+        leaderboard_countdown.resize(count);
+        nvs_get_blob(my_handle, "lb_cd", leaderboard_countdown.data(), &required_size);
+        ESP_LOGI(TAG, "Loaded %d entries for Countdown Leaderboard", count);
+    }
+    // Countup
+    required_size = 0;
+    if (nvs_get_blob(my_handle, "lb_cu", NULL, &required_size) == ESP_OK && required_size > 0) {
+        size_t count = required_size / sizeof(LeaderboardEntry);
+        leaderboard_countup.resize(count);
+        nvs_get_blob(my_handle, "lb_cu", leaderboard_countup.data(), &required_size);
+         ESP_LOGI(TAG, "Loaded %d entries for Countup Leaderboard", count);
+    }
+    nvs_close(my_handle);
+}
+
 // --- API FÜR WEBSERVER (Vorbereitung) ---
 
 void api_set_paused(bool paused) {
@@ -154,14 +233,14 @@ void api_set_countdown_manual(uint32_t new_time_ms) {
 }
 
 void api_increment_piece_counter() {
-    piece_counter++;
+    piece_counter = piece_counter + 1;
     ESP_LOGI(TAG, "API: Stückzähler inkrementiert auf: %d", piece_counter);
 }
 
 void api_decrement_piece_counter() {
     // HIER: Sicherheitsabfrage hinzufügen
     if (piece_counter > 0) {
-        piece_counter--;
+        piece_counter = piece_counter - 1;
         ESP_LOGI(TAG, "API: Stückzähler dekrementiert auf: %d", piece_counter);
     } else {
         ESP_LOGW(TAG, "API: Dekrementierung ignoriert, Counter ist bereits 0");
@@ -184,6 +263,9 @@ void api_reset_time() {
     // 1. Züge immer zurücksetzen
     piece_counter = 0;
     ESP_LOGI(TAG, "API: Züge auf 0 zurückgesetzt");
+    // Wichtig: Teamname hier NICHT löschen, da er für das neue Spiel erhalten bleiben soll.
+    // Aber vielleicht beim allerersten Start erzwingen? 
+    // Nein, wir gehen davon aus, dass er gesetzt bleibt.
 
     // 2. Zeit je nach Modus zurücksetzen
     if (current_game_mode == MODE_A_COUNTDOWN) {
@@ -193,6 +275,52 @@ void api_reset_time() {
         time_countup = 0;
         ESP_LOGI(TAG, "API: Zeit Reset (Countup) auf 0 ms");
     }
+}
+
+void api_set_team_name(const char* team_name) {
+    strlcpy(current_team_name, team_name, sizeof(current_team_name));
+    save_team_name_nvs(current_team_name); // Persistenz
+    ESP_LOGI(TAG, "API: Teamname gesetzt auf: '%s'", current_team_name);
+}
+
+void api_save_and_reset(const char* team_name, bool tower_fell) {
+    LeaderboardEntry entry;
+    // Sicherstellen, dass der String terminiert ist und nicht überläuft
+    strlcpy(entry.team_name, team_name, sizeof(entry.team_name));
+    entry.moves = piece_counter;
+    entry.tower_fell = tower_fell;
+    
+    // NEU: Unique ID und Timestamp
+    entry.entry_id = esp_random();
+    entry.timestamp = esp_timer_get_time() / 1000; // ms seit Boot
+
+    if (current_game_mode == MODE_A_COUNTDOWN) {
+        // Berechne vergangene Zeit: Startzeit - verbleibende Zeit
+        entry.time_ms = countdown_start_value - time_countdown;
+        leaderboard_countdown.push_back(entry);
+        // Sortieren: Züge absteigend (mehr = besser), bei Gleichstand Zeit aufsteigend (weniger = besser)
+        std::sort(leaderboard_countdown.begin(), leaderboard_countdown.end(), [](const LeaderboardEntry& a, const LeaderboardEntry& b) {
+            if (a.moves != b.moves) {
+                return a.moves > b.moves;
+            }
+            return a.time_ms < b.time_ms;
+        });
+        ESP_LOGI(TAG, "Saved entry to Countdown Leaderboard. Total entries: %d", leaderboard_countdown.size());
+    } else {
+        entry.time_ms = time_countup;
+        leaderboard_countup.push_back(entry);
+        // Sortieren: Züge absteigend (mehr = besser), bei Gleichstand Zeit aufsteigend (weniger = besser)
+        std::sort(leaderboard_countup.begin(), leaderboard_countup.end(), [](const LeaderboardEntry& a, const LeaderboardEntry& b) {
+            if (a.moves != b.moves) {
+                return a.moves > b.moves;
+            }
+            return a.time_ms < b.time_ms;
+        });
+        ESP_LOGI(TAG, "Saved entry to Countup Leaderboard. Total entries: %d", leaderboard_countup.size());
+    }
+
+    save_leaderboards_nvs(); // Leaderboard sofort speichern
+    api_reset_time();
 }
 
 // Getter Funktionen (können vom Webserver genutzt werden)
@@ -205,6 +333,19 @@ int api_get_game_mode() { return (int)current_game_mode; }
 // --- LOGIK FUNKTIONEN ---
 
 void toggle_pause() {
+    // NEU: Wenn kein Teamname gesetzt ist, darf Spiel nicht gestartet werden
+    if (is_paused == true) { // Wir sind momentan pausiert und wollen starten
+        if (strlen(current_team_name) == 0) {
+            ESP_LOGW(TAG, "Start verhindert: Kein Teamname gesetzt!");
+            // Kurzes Blinken als Fehlersignal
+            for(int i=0; i<3; i++) {
+                gpio_set_level(PAUSE_LED_PIN, 0); vTaskDelay(pdMS_TO_TICKS(100));
+                gpio_set_level(PAUSE_LED_PIN, 1); vTaskDelay(pdMS_TO_TICKS(100));
+            }
+            return;
+        }
+    }
+    
     is_paused = !is_paused;
     ESP_LOGI(TAG, "Spielstatus geändert: %s", is_paused ? "PAUSIERT" : "LAUFEND");
     
@@ -250,6 +391,9 @@ void handle_button_logic() {
 void broadcast_game_state() {
     cJSON *root = cJSON_CreateObject();
     
+    // NEU: Team Name Info (damit Client weiß, ob ESP bereit ist)
+    cJSON_AddStringToObject(root, "current_team", current_team_name);
+    
     // 1. Modus
     cJSON_AddNumberToObject(root, "mode", (int)current_game_mode);
     
@@ -263,6 +407,26 @@ void broadcast_game_state() {
     
     // 4. Counter
     cJSON_AddNumberToObject(root, "piece_counter", piece_counter);
+
+    // 5. Leaderboard (Aktueller Modus)
+    cJSON *lbFuncArr = cJSON_CreateArray();
+    const auto& currentLboard = (current_game_mode == MODE_A_COUNTDOWN) ? leaderboard_countdown : leaderboard_countup;
+    
+    // Begrenzen auf Top 10 um Paketgröße klein zu halten
+    int count = 0;
+    for (const auto& entry : currentLboard) {
+        if (count >= 10) break;
+        cJSON *item = cJSON_CreateObject();
+        cJSON_AddStringToObject(item, "team", entry.team_name);
+        cJSON_AddNumberToObject(item, "time", (double)entry.time_ms);
+        cJSON_AddNumberToObject(item, "moves", entry.moves);
+        cJSON_AddBoolToObject(item, "fell", entry.tower_fell);
+        cJSON_AddNumberToObject(item, "id", entry.entry_id); // Unique ID
+        cJSON_AddNumberToObject(item, "ts", entry.timestamp); // Timestamp
+        cJSON_AddItemToArray(lbFuncArr, item);
+        count++;
+    }
+    cJSON_AddItemToObject(root, "leaderboard", lbFuncArr);
 
     // JSON String erstellen
     char *json_str = cJSON_PrintUnformatted(root);
@@ -299,8 +463,11 @@ extern "C" void app_main(void) {
     // initialisation
     init_nvs();
     
-    // Lade gespeicherte Zeit
+    // Lade gespeicherte Zeit und Daten
     countdown_start_value = load_countdown_start(5 * 60 * 1000); // Default 5 min
+    load_team_name_nvs(current_team_name, sizeof(current_team_name)); // Teamname laden
+    load_leaderboards_nvs(); // Leaderboards laden
+
     time_countdown = countdown_start_value;
     time_countup = 0;
     
@@ -397,7 +564,7 @@ extern "C" void app_main(void) {
                 // C) Roboter Signal Erkennung (Nur wenn Spiel läuft)
                 bool robot_signal = gpio_get_level(ROBOT_PIN);
                 if (robot_signal && !last_robot_pin_state) {
-                    piece_counter++;
+                    piece_counter = piece_counter + 1;
                     ESP_LOGI(TAG, "ROBOT SIGNAL! Piece Counter: %d", piece_counter);
                 }
                 last_robot_pin_state = robot_signal;

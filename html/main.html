@@ -56,6 +56,11 @@
                 </div>
             </div>
 
+            <!-- Team Name Input (Centered below switch) -->
+            <div class="team-input-container" style="text-align: center; margin-bottom: 1rem;">
+                <input type="text" id="teamNameInput" class="form-input" style="max-width: 200px;" placeholder="Teamname eingeben">
+            </div>
+
             <!-- Main Content Grid -->
             <div class="main-content">
                 <!-- Leaderboard (Left) -->
@@ -89,8 +94,9 @@
                         <!-- NEU: Reset Button -->
                         <button id="resetBtn" class="btn btn-primary btn-square" aria-label="Reset Time">
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-                                <path d="M3 3v5h5"/>
+                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                                <polyline points="7 3 7 8 15 8"></polyline>
                             </svg>
                         </button>
 
@@ -115,6 +121,16 @@
                     <div class="counter-buttons">
                         <button id="decrementBtn" class="counter-btn decrement-btn" disabled>−</button>
                         <button id="incrementBtn" class="counter-btn increment-btn">+</button>
+                    </div>
+                     <!-- Tower Fell Toggle -->
+                    <div style="margin-top: 1rem; text-align: center;">
+                        <button id="towerFellBtn" class="btn btn-secondary" style="width: 100%; display: flex; align-items: center; justify-content: center; padding: 0.5rem;" aria-pressed="false" title="Turmstatus ändern">
+                            <span id="towerFellIcon" style="display: flex; align-items: center;">
+                                <svg width="24" height="24" viewBox="0 0 100 100" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                  <path d="M20 85 h60 v-10 h-60 z M20 73 h18 v-10 h-18 z M41 73 h18 v-10 h-18 z M62 73 h18 v-10 h-18 z M20 61 h60 v-10 h-60 z M20 49 h18 v-10 h-18 z M41 49 h18 v-10 h-18 z M62 49 h18 v-10 h-18 z M20 37 h60 v-10 h-60 z M20 25 h18 v-10 h-18 z M41 25 h18 v-10 h-18 z M62 25 h18 v-10 h-18 z"/>
+                                </svg>
+                            </span> 
+                        </button>
                     </div>
                 </div>
             </div>

@@ -97,6 +97,8 @@ extern void api_set_game_mode(int mode);
 extern bool api_get_is_paused(); 
 // NEU:
 extern void api_reset_time();
+extern void api_save_and_reset(const char* team_name, bool tower_fell);
+extern void api_set_team_name(const char* team_name);
 
 // --- WEBSERVER & WEBSOCKET ---
 static httpd_handle_t server = NULL;
@@ -240,6 +242,22 @@ static esp_err_t ws_handler(httpd_req_t *req)
                 // NEU: Reset Command
                 else if (strcmp(cmd->valuestring, "reset_time") == 0) {
                     api_reset_time();
+                }
+                // NEU: Save and Reset Command
+                else if (strcmp(cmd->valuestring, "save_and_reset") == 0) {
+                    cJSON *team = cJSON_GetObjectItem(root, "team");
+                    cJSON *fell = cJSON_GetObjectItem(root, "fell");
+                    
+                    const char* teamName = (cJSON_IsString(team)) ? team->valuestring : "Unbekannt";
+                    bool fellBool = (cJSON_IsBool(fell)) ? cJSON_IsTrue(fell) : false;
+                    
+                    api_save_and_reset(teamName, fellBool);
+                }
+                // NEU: Set Team Name (für Start Check)
+                else if (strcmp(cmd->valuestring, "set_team_name") == 0) {
+                    cJSON *team = cJSON_GetObjectItem(root, "team");
+                    const char* teamName = (cJSON_IsString(team)) ? team->valuestring : "";
+                    api_set_team_name(teamName);
                 }
             }
             cJSON_Delete(root);
