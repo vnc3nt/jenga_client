@@ -575,7 +575,8 @@ body.dark .progress-bar {
 }
 
 .play-pause-btn:disabled {
-    background-color: #9ca3af;
+    /* Unity: Use opacity from button:disabled */
+    /* Remove specific background-color to avoid "Gray vs Faded Color" inconsistency */
     cursor: not-allowed;
 }
 

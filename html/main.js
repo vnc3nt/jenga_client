@@ -52,11 +52,9 @@ document.addEventListener('DOMContentLoaded', () => {
         locateBtn.addEventListener('click', () => {
              // Disable for 3 seconds
              locateBtn.disabled = true;
-             locateBtn.style.opacity = "0.5";
              sendCommand('locate_device');
              setTimeout(() => {
                  locateBtn.disabled = false;
-                 locateBtn.style.opacity = "1";
              }, 3000);
         });
     }
