@@ -269,6 +269,7 @@ static esp_err_t ws_handler(httpd_req_t *req)
                 }
                 // NEU: Update Entry Command
                 else if (strcmp(cmd->valuestring, "update_entry") == 0) {
+                    ESP_LOGI(TAG, "Received update_entry command");
                     // id, team, moves, time, fell
                     cJSON *id = cJSON_GetObjectItem(root, "id");
                     cJSON *team = cJSON_GetObjectItem(root, "team");
@@ -278,14 +279,19 @@ static esp_err_t ws_handler(httpd_req_t *req)
                     
                     if (cJSON_IsNumber(id) && cJSON_IsString(team) && cJSON_IsNumber(moves) && cJSON_IsNumber(timeVal)) {
                         bool fellBool = cJSON_IsTrue(fell);
-                        api_update_entry((uint32_t)id->valueint, team->valuestring, moves->valueint, (int64_t)timeVal->valuedouble, fellBool);
+                        // Use valuedouble for ID to avoid overflow issues with uint32_t > INT_MAX
+                        api_update_entry((uint32_t)id->valuedouble, team->valuestring, moves->valueint, (int64_t)timeVal->valuedouble, fellBool);
+                    } else {
+                        ESP_LOGE(TAG, "Invalid params for update_entry: ID=%d Team=%d Moves=%d Time=%d",
+                                 cJSON_IsNumber(id), cJSON_IsString(team), cJSON_IsNumber(moves), cJSON_IsNumber(timeVal));
                     }
                 }
                 // NEU: Delete Entry Command
                 else if (strcmp(cmd->valuestring, "delete_entry") == 0) {
                     cJSON *id = cJSON_GetObjectItem(root, "id");
                     if (cJSON_IsNumber(id)) {
-                        api_delete_entry((uint32_t)id->valueint);
+                         // Use valuedouble for ID
+                        api_delete_entry((uint32_t)id->valuedouble);
                     }
                 }
                 // NEU: Clear Leaderboard Command

@@ -25,6 +25,9 @@
 #include "nvs.h"
 #include "udp_sync.h"
 
+// Forward Declaration
+void broadcast_game_state();
+
 static const char *TAG = "MAIN"; // Tag für Logs
 SemaphoreHandle_t leaderboard_mutex = NULL; // Globale Definition
 
@@ -325,6 +328,7 @@ void api_save_and_reset(const char* team_name, bool tower_fell) {
 // --- NEU: LEADERBOARD EDIT API ---
 
 void api_update_entry(uint32_t id, const char* team, int moves, int64_t time_ms, bool fell) {
+    ESP_LOGI(TAG, "API Update Entry: ID=%lu, Team=%s", (unsigned long)id, team);
     xSemaphoreTake(leaderboard_mutex, portMAX_DELAY);
     
     bool found = false;
@@ -356,13 +360,27 @@ void api_update_entry(uint32_t id, const char* team, int moves, int64_t time_ms,
     
     if (found) {
         ESP_LOGI(TAG, "Entry %lu updated.", (unsigned long)id);
+
+        // Re-Sortieren um Konsistenz zu wahren
+        std::sort(leaderboard_countdown.begin(), leaderboard_countdown.end(), [](const LeaderboardEntry& a, const LeaderboardEntry& b) {
+            if (a.moves != b.moves) return a.moves > b.moves;
+            return a.time_ms < b.time_ms;
+        });
+        std::sort(leaderboard_countup.begin(), leaderboard_countup.end(), [](const LeaderboardEntry& a, const LeaderboardEntry& b) {
+            if (a.moves != b.moves) return a.moves > b.moves;
+            return a.time_ms < b.time_ms;
+        });
+
         save_leaderboards_nvs();
-        broadcast_leaderboard_udp();
+        // broadcast_leaderboard_udp(); <-- ENTFERNT (Deadlock Gefahr!)
     } else {
         ESP_LOGW(TAG, "Entry %lu not found for update.", (unsigned long)id);
     }
     
     xSemaphoreGive(leaderboard_mutex);
+    
+    if (found) broadcast_leaderboard_udp(); // Jetzt sicher aufrufen
+    broadcast_game_state();
 }
 
 void api_delete_entry(uint32_t id) {
@@ -385,9 +403,12 @@ void api_delete_entry(uint32_t id) {
      }
      
      save_leaderboards_nvs();
-     broadcast_leaderboard_udp();
+     // broadcast_leaderboard_udp(); // deadlock fix
      
      xSemaphoreGive(leaderboard_mutex);
+
+     broadcast_leaderboard_udp();
+     broadcast_game_state();
 }
 
 void api_clear_leaderboard() {
@@ -399,9 +420,12 @@ void api_clear_leaderboard() {
     ESP_LOGI(TAG, "All leaderboards cleared.");
     
     save_leaderboards_nvs();
-    broadcast_leaderboard_udp();
+    // broadcast_leaderboard_udp(); // deadlock fix
     
     xSemaphoreGive(leaderboard_mutex);
+
+    broadcast_leaderboard_udp();
+    broadcast_game_state();
 }
 
 // Getter Funktionen (können vom Webserver genutzt werden)

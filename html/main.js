@@ -316,10 +316,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     pwConfirmBtn.addEventListener('click', () => {
         if (passwordInput.value === 'Weihnachtsbaum') {
+            // Save state before closing (which clears globals)
+            const action = pendingAction;
+            const id = pendingEntryId;
+            
             closePasswordModal();
-            if (pendingAction === 'edit') {
-                openEditModal(pendingEntryId);
-            } else if (pendingAction === 'deleteAll') {
+            
+            if (action === 'edit') {
+                openEditModal(id);
+            } else if (action === 'deleteAll') {
                 sendCommand('clear_leaderboard');
             }
         } else {
@@ -342,8 +347,14 @@ document.addEventListener('DOMContentLoaded', () => {
     let editingId = null;
 
     function openEditModal(id) {
+        console.log("openEditModal called with ID:", id); // DEBUG
+        console.log("Current Leaderboard:", gameState.leaderboard); // DEBUG
+
         // Robust matching (String vs Number)
         const entry = gameState.leaderboard.find(e => String(e.id) === String(id) || String(e.entry_id) === String(id)); 
+        
+        console.log("Found Entry:", entry); // DEBUG
+
         if (!entry) return;
 
         editingId = entry.entry_id || entry.id; // Prefer entry_id (number) for backend API
@@ -487,6 +498,7 @@ document.addEventListener('DOMContentLoaded', () => {
                    if (newLbString !== window.lastLeaderboardJson || isFullscreen !== (window.lastIsFullscreen || false) || 
                        filterOnlyBest !== (window.lastFilterBest || false) || filterTowerStanding !== (window.lastFilterTower || false)) {
                        
+                       console.log("Leaderboard updated! New Data:", data.leaderboard); // DEBUG
                        gameState.leaderboard = data.leaderboard;
                        renderLeaderboard(data.leaderboard);
                        
