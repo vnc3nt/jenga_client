@@ -414,10 +414,13 @@ void api_delete_entry(uint32_t id) {
 void api_clear_leaderboard() {
     xSemaphoreTake(leaderboard_mutex, portMAX_DELAY);
     
-    leaderboard_countdown.clear();
-    leaderboard_countup.clear();
-    
-    ESP_LOGI(TAG, "All leaderboards cleared.");
+    if (current_game_mode == MODE_A_COUNTDOWN) {
+        leaderboard_countdown.clear();
+        ESP_LOGI(TAG, "Countdown leaderboard cleared.");
+    } else {
+        leaderboard_countup.clear();
+        ESP_LOGI(TAG, "Countup leaderboard cleared.");
+    }
     
     save_leaderboards_nvs();
     // broadcast_leaderboard_udp(); // deadlock fix
