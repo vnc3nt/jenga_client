@@ -659,6 +659,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!gameState.isPlaying) {
             const newMode = e.target.checked ? 'countup' : 'countdown';
             sendCommand('set_mode', newMode);
+            
+            // Reset Tower Fell Status when switching modes
+            if (isTowerFell) {
+                isTowerFell = false;
+                updateTowerFellUI();
+            }
         }
     });
 
