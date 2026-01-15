@@ -57,8 +57,9 @@
             </div>
 
             <!-- Team Name Input (Centered below switch) -->
-            <div class="team-input-container" style="text-align: center; margin-bottom: 1rem;">
-                <input type="text" id="teamNameInput" class="form-input" style="max-width: 200px;" placeholder="Teamname eingeben">
+            <div class="team-input-container" style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 1rem;">
+                <label for="teamNameInput" style="font-weight: 500; font-size: 1rem;">Team:</label>
+                <input type="text" id="teamNameInput" class="form-input" style="max-width: 200px;" placeholder="Name eingeben">
             </div>
 
             <!-- Main Content Grid -->
@@ -192,16 +193,75 @@
             </div>
 
             <div class="config-content">
-                <div class="wifi-section">
-                    <h2 class="section-title">WLAN Einstellungen</h2>
-                    <div class="wifi-list">
-                        <div class="wifi-item">
-                            <div class="wifi-info">
-                                <span id="wifiSsid" class="wifi-ssid">MeinWLAN</span>
-                                <span class="wifi-meta">Verbunden</span>
-                            </div>
+                <div class="wifi-section" style="margin-bottom: 1rem;">
+                    <div class="section-header" style="display:flex; justify-content: space-between; align-items:center; margin-bottom: 0.75rem;">
+                        <h2 class="section-title" style="margin: 0;">Geräte-ID</h2>
+                        <button id="saveMdnsBtn" onclick="saveMdnsId()" class="btn btn-secondary btn-sm" title="Speichern">Speichern</button>
+                    </div>
+
+                    <div class="form-group" style="margin: 0;">
+                        <div style="display:flex; align-items:center; gap: 0.5rem;">
+                            <span style="color: var(--text-secondary);">jenga</span>
+                            <input type="number" id="mdnsIdInput" class="form-input" style="max-width: 90px;" placeholder="" inputmode="numeric" min="1" max="99" autocomplete="off" spellcheck="false">
+                            <span style="color: var(--text-secondary);">.local</span>
+                        </div>
+                        <div style="margin-top: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">
+                            <span>Leer lassen = ID wird beim Boot automatisch gewählt.</span>
                         </div>
                     </div>
+                </div>
+
+                <div class="wifi-section">
+                    <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h2 class="section-title" style="margin: 0;">Verfügbare Netzwerke</h2>
+                        <div class="action-buttons">
+                            <button id="refreshBtn" onclick="fetchNetworks()" class="btn btn-secondary btn-sm" title="Aktualisieren">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M23 4v6h-6M1 20v-6h6"></path>
+                                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                                </svg>
+                            </button>
+                            <button id="restartBtn" onclick="restartESP()" class="btn btn-secondary btn-sm" title="Neustarten" style="margin-left: 0.5rem;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
+                                    <line x1="12" y1="2" x2="12" y2="12"></line>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="networkList" class="wifi-list">
+                        <div class="loading">WLAN Suche läuft...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Confirm Modal for Config -->
+        <div id="confirmConfigModal" class="modal">
+            <div class="modal-content">
+                <h3 class="modal-title" id="confirmTitle">Bestätigung</h3>
+                <p id="confirmMessage" style="margin-bottom: 1.5rem; color: #6b7280;">Sind Sie sicher?</p>
+                <div class="modal-actions">
+                    <button id="confirmCancelBtn" class="btn btn-secondary">Abbrechen</button>
+                    <button id="confirmOkBtn" class="btn btn-primary">Bestätigen</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Wifi Modal -->
+        <div id="wifiModal" class="modal">
+            <div class="modal-content">
+                <h3 class="modal-title">Verbinden</h3>
+                <div class="form-group">
+                    <input type="text" id="ssidInput" class="form-input" placeholder="SSID" readonly>
+                </div>
+                <div class="form-group">
+                    <input type="password" id="wifiPwInput" class="form-input" placeholder="WLAN Passwort">
+                </div>
+                <div class="modal-actions">
+                    <button id="wifiCancelBtn" onclick="closeWifiModal()" class="btn btn-secondary">Abbrechen</button>
+                    <button id="wifiConnectBtn" onclick="saveWifi()" class="btn btn-primary">Verbinden</button>
                 </div>
             </div>
         </div>

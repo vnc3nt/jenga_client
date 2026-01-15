@@ -266,7 +266,7 @@ button:disabled {
     /* padding-top: 3.5rem; REMOVED */
     border-radius: 0.75rem;
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-    order: 3;
+    /* order: 3; REMOVED to restore natural DOM order (left side) */
     position: relative; /* For absolute buttons */
     transition: all 0.3s ease;
     max-height: 500px;
@@ -812,6 +812,7 @@ body.dark .config-title {
 }
 
 .slider {
+    height: 3rem;
     position: absolute;
     cursor: pointer;
     top: 0;
@@ -843,13 +844,15 @@ body.dark .slider:hover {
 .slider:before {
     position: absolute;
     content: "";
-    height: 38px; /* 48px Höhe - 5px Padding oben/unten */
-    width: calc(50% - 10px); /* Responsive width (50% minus padding on both sides) */
+    height: 38px;
+    width: calc(50% - 10px);
     left: 5px;
-    bottom: 5px;
+    /* bottom: 5px; REMOVED */
+    top: 50%;
+    transform: translateY(-50%);
     background-color: white;
-    transition: .4s;
-    border-radius: 0.3rem; /* Leicht abgerundetes Inneres */
+    transition: 0.4s;
+    border-radius: 0.3rem;
     box-shadow: 0 1px 3px rgba(0,0,0,0.2);
     z-index: 1;
 }
@@ -859,9 +862,11 @@ body.dark .slider:before {
 }
 
 /* Wenn Checkbox gecheckt (Count up) */
-/* Updated for Responsive Width */
 input:checked + .slider:before {
-    transform: translateX(100%);
+    /* transform: translateX(100%); REMOVED to avoid conflict with translateY */
+    /* Using left property instead for cleaner positioning relative to container size */
+    left: calc(50% + 5px); 
+    /* transform: translateY(-50%); Inherits from standard state */
 }
 
 

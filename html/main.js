@@ -61,6 +61,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (page === 'config') {
             mainPage.classList.add('hidden');
             configPage.classList.remove('hidden');
+            // NEU: Konfigurationselemente initial laden wenn Seite geöffnet wird
+            loadMdnsId();
+            fetchNetworks();
         } else {
             configPage.classList.add('hidden');
             mainPage.classList.remove('hidden');
@@ -197,7 +200,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Using ID is better if we have it. Backend sends entry_id.
     
     // Icons
-    const iconMinimize = `<svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3H5m3-3h3m-3 0 18 18m-3-3v-3h3m-3 3h-3"/></svg>`; // Simplified pseudo minimize
+    const iconMinimize = `<svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`; // X Icon
     const iconMaximize = `<svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>`;
     const iconEdit = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`;
 
@@ -457,10 +460,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
 
-                // NEU: Leaderboard Update
+                // NEU: Leaderboard Update - Nur rendern wenn Daten sich geändert haben
                 if (data.leaderboard) {
-                   gameState.leaderboard = data.leaderboard;
-                   renderLeaderboard(data.leaderboard);
+                   const newLbString = JSON.stringify(data.leaderboard);
+                   // Prüfen ob globaler Speicher existiert
+                   if (typeof window.lastLeaderboardJson === 'undefined') window.lastLeaderboardJson = "";
+                   
+                   if (newLbString !== window.lastLeaderboardJson || isFullscreen !== (window.lastIsFullscreen || false) || 
+                       filterOnlyBest !== (window.lastFilterBest || false) || filterTowerStanding !== (window.lastFilterTower || false)) {
+                       
+                       gameState.leaderboard = data.leaderboard;
+                       renderLeaderboard(data.leaderboard);
+                       
+                       window.lastLeaderboardJson = newLbString;
+                       window.lastIsFullscreen = isFullscreen;
+                       window.lastFilterBest = filterOnlyBest;
+                       window.lastFilterTower = filterTowerStanding;
+                   }
                 }
 
                 updateUI();
@@ -599,4 +615,309 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- INITIALIZATION ---
     updateUI();
     initWebSocket();
+
+    // ==========================================
+    // CONFIG PAGE LOGIC (Merged from config.js)
+    // ==========================================
+
+    // Icons
+    const ICON_EDIT = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>';
+    const ICON_TRASH = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>';
+    const ICON_LOCK = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>';
+    const ICON_UNLOCK = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>';
+    const ICON_CHECK = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+
+    let savedSSID = "";
+    let connectedSSID = "";
+    let isConnected = false;
+    let mdnsDeviceId = null; 
+
+    window.loadMdnsId = async function() {
+        const input = document.getElementById('mdnsIdInput');
+        if (!input) return;
+
+        try {
+            const resp = await fetch('/mdns');
+            if (!resp.ok) return;
+            const data = await resp.json();
+
+            if (data && typeof data.id === 'number' && Number.isFinite(data.id)) {
+                const v = Math.trunc(data.id);
+                mdnsDeviceId = (v >= 1 && v <= 99) ? v : null;
+            } else if (data && typeof data.id === 'string') {
+                const s = data.id.trim();
+                if (/^\d+$/.test(s)) {
+                    const v = parseInt(s, 10);
+                    mdnsDeviceId = (v >= 1 && v <= 99) ? v : null;
+                } else {
+                    mdnsDeviceId = null;
+                }
+            } else {
+                mdnsDeviceId = null;
+            }
+
+            input.value = (mdnsDeviceId === null) ? '' : String(mdnsDeviceId);
+        } catch (e) {
+            // ignore
+        }
+    };
+
+    window.saveMdnsId = async function() {
+        const input = document.getElementById('mdnsIdInput');
+        const btn = document.getElementById('saveMdnsBtn');
+        if (!input) return;
+
+        const raw = (input.value || '').trim();
+        if (raw === '') {
+            mdnsDeviceId = null;
+        } else {
+            if (!/^\d+$/.test(raw)) {
+                alert('Bitte eine Zahl von 1 bis 99 eingeben (oder leer lassen).');
+                return;
+            }
+            const v = parseInt(raw, 10);
+            if (!(v >= 1 && v <= 99)) {
+                alert('Bitte eine Zahl von 1 bis 99 eingeben (oder leer lassen).');
+                return;
+            }
+            mdnsDeviceId = v;
+        }
+
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = '...';
+        }
+
+        try {
+            const resp = await fetch('/mdns', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: mdnsDeviceId })
+            });
+
+            if (!resp.ok) {
+                const msg = await resp.text();
+                alert(msg || 'Fehler beim Speichern');
+                return;
+            }
+
+            alert('Geräte-ID gespeichert. Wirkt beim nächsten Boot.');
+            await loadMdnsId();
+        } catch (e) {
+            alert('Fehler beim Speichern');
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = 'Speichern';
+            }
+        }
+    };
+
+    window.fetchNetworks = async function() {
+        const list = document.getElementById('networkList');
+        const refreshBtn = document.getElementById('refreshBtn');
+        
+        if (!list) return;
+
+        list.innerHTML = '<div class="loading">Suche Netzwerke...</div>';
+        if(refreshBtn) refreshBtn.disabled = true;
+
+        try {
+            try {
+                const statusResp = await fetch('/status');
+                if (statusResp.ok) {
+                    const statusData = await statusResp.json();
+                    savedSSID = statusData.saved_ssid || "";
+                    connectedSSID = statusData.connected_ssid || "";
+                    isConnected = statusData.connected;
+                }
+            } catch (e) { console.log("Status fetch error", e); }
+
+            const response = await fetch('/scan');
+            if (!response.ok) throw new Error("Scan fehlgeschlagen");
+            
+            const networks = await response.json();
+            list.innerHTML = '';
+
+            networks.sort((a, b) => {
+                const aIsConn = (a.ssid === connectedSSID && isConnected);
+                const bIsConn = (b.ssid === connectedSSID && isConnected);
+                if (aIsConn && !bIsConn) return -1;
+                if (!aIsConn && bIsConn) return 1;
+
+                const aIsSaved = (a.ssid === savedSSID);
+                const bIsSaved = (b.ssid === savedSSID);
+                if (aIsSaved && !bIsSaved) return -1;
+                if (!aIsSaved && bIsSaved) return 1;
+                
+                return b.rssi - a.rssi;
+            });
+
+            if (networks.length === 0) {
+                list.innerHTML = '<div class="loading">Keine Netzwerke gefunden.</div>';
+            } else {
+                networks.forEach(net => {
+                    const isSaved = (net.ssid === savedSSID && savedSSID !== "");
+                    const isConn = (net.ssid === connectedSSID && isConnected);
+                    
+                    const item = document.createElement('div');
+                    item.className = 'wifi-item';
+                    if (isConn) item.classList.add('connected');
+                    
+                    const safeSSID = net.ssid.replace(/'/g, "\\'");
+                    
+                    item.onclick = () => openWifiModal(net.ssid);
+
+                    let statusBadges = '';
+                    if (isConn) statusBadges += `<span class="badge badge-success">${ICON_CHECK} Verbunden</span>`;
+                    else if (isSaved) statusBadges += `<span class="badge badge-info">Gespeichert</span>`;
+
+                    let html = `
+                        <div class="wifi-info">
+                            <div class="wifi-header">
+                                <span class="wifi-ssid">${net.ssid}</span>
+                                ${statusBadges}
+                            </div>
+                            <div class="wifi-meta">
+                                Signal: ${net.rssi} dBm 
+                                <span class="wifi-auth">${net.auth > 0 ? ICON_LOCK : ICON_UNLOCK}</span>
+                            </div>
+                        </div>
+                    `;
+
+                    if (isSaved || isConn) {
+                        html += `
+                        <div class="wifi-actions">
+                            <button type="button" class="btn-icon" onclick="event.stopPropagation(); window.openWifiModal('${safeSSID}')" title="Bearbeiten">
+                                ${ICON_EDIT}
+                            </button>
+                            <button type="button" class="btn-icon delete" onclick="event.stopPropagation(); window.forgetNetwork('${safeSSID}')" title="Vergessen">
+                                ${ICON_TRASH}
+                            </button>
+                        </div>`;
+                    }
+                    item.innerHTML = html;
+                    list.appendChild(item);
+                });
+            }
+
+        } catch (error) {
+            console.error('Error:', error);
+            list.innerHTML = '<div class="loading" style="color:#ef4444">Fehler beim Laden.</div>';
+        } finally {
+            if(refreshBtn) refreshBtn.disabled = false;
+        }
+    };
+
+    window.forgetNetwork = async function(ssid) {
+        showConfirm(`Netzwerk "${ssid}" wirklich vergessen?`, async () => {
+            try {
+                const resp = await fetch('/forget', { method: 'POST' });
+                if (resp.ok) {
+                    if (savedSSID === ssid) savedSSID = "";
+                    fetchNetworks(); 
+                } else {
+                    alert("Fehler beim Löschen.");
+                }
+            } catch (e) { 
+                console.error(e);
+            }
+        });
+    };
+
+    window.openWifiModal = function(ssid) {
+        const modal = document.getElementById('wifiModal');
+        const ssidInput = document.getElementById('ssidInput');
+        const passInput = document.getElementById('wifiPwInput');
+        if(modal && ssidInput) {
+            ssidInput.value = ssid;
+            passInput.value = '';
+            modal.classList.add('active'); 
+            setTimeout(() => passInput.focus(), 100);
+        }
+    };
+
+    window.closeWifiModal = function() {
+        const modal = document.getElementById('wifiModal');
+        if(modal) modal.classList.remove('active');
+    };
+
+    window.showConfirm = function(message, onConfirm) {
+        const modal = document.getElementById('confirmConfigModal');
+        const msgEl = document.getElementById('confirmMessage');
+        const okBtn = document.getElementById('confirmOkBtn');
+        const cancelBtn = document.getElementById('confirmCancelBtn');
+
+        if (!modal) {
+            if (confirm(message)) onConfirm();
+            return;
+        }
+
+        msgEl.textContent = message;
+        
+        const newOk = okBtn.cloneNode(true);
+        const newCancel = cancelBtn.cloneNode(true);
+        okBtn.parentNode.replaceChild(newOk, okBtn);
+        cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
+
+        newOk.addEventListener('click', () => {
+            modal.classList.remove('active');
+            onConfirm();
+        });
+
+        newCancel.addEventListener('click', () => {
+            modal.classList.remove('active');
+        });
+
+        modal.classList.add('active');
+    };
+
+    window.restartESP = function() {
+        showConfirm("ESP32 wirklich neustarten?", () => {
+            fetch('/restart', { method: 'POST' })
+                .then(() => {
+                    alert("Neustart wird durchgeführt... Seite wird neu geladen.");
+                    setTimeout(() => location.reload(), 5000);
+                })
+                .catch(() => alert("Fehler beim Neustart"));
+        });
+    };
+
+    window.saveWifi = function() {
+        const ssid = document.getElementById('ssidInput').value;
+        const pass = document.getElementById('wifiPwInput').value;
+        const btn = document.querySelector('#wifiModal .btn-primary');
+        
+        const originalText = btn.textContent;
+        if(btn) {
+            btn.textContent = "Verbinde...";
+            btn.disabled = true;
+        }
+        
+        fetch('/save', { 
+            method: 'POST', 
+            headers: {'Content-Type': 'application/json'}, 
+            body: JSON.stringify({ssid, password: pass}) 
+        })
+        .then((response) => {
+            if(response.ok) {
+                closeWifiModal();
+                const list = document.getElementById('networkList');
+                if(list) list.innerHTML = '<div class="loading">Verbinde mit ' + ssid + '...</div>';
+                setTimeout(fetchNetworks, 4000);
+            } else {
+                throw new Error("Server Error");
+            }
+        })
+        .catch(() => {
+            alert('Fehler beim Speichern');
+        })
+        .finally(() => {
+            if(btn) {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        });
+    };
+
 });
