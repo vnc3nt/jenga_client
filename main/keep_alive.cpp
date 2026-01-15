@@ -5,11 +5,15 @@
 #include "freertos/semphr.h"
 #include <sys/param.h>
 #include <string.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 static const char *TAG = "wss_keep_alive";
 
 struct client_data {
     int fd;
+    struct in_addr addr; // IP Adresse zur Identifizierung
     int64_t last_seen;
 };
 
@@ -101,16 +105,42 @@ void wss_keep_alive_stop(wss_keep_alive_t h)
 esp_err_t wss_keep_alive_add_client(wss_keep_alive_t h, int fd)
 {
     if (!h) return ESP_ERR_INVALID_ARG;
+
+    // 1. IP des neuen Clients ermitteln
+    struct sockaddr_in addr;
+    socklen_t addr_len = sizeof(addr);
+    if (getpeername(fd, (struct sockaddr *)&addr, &addr_len) != 0) {
+        ESP_LOGE(TAG, "Could not get peer name for fd %d", fd);
+        return ESP_FAIL;
+    }
+
     xSemaphoreTake(h->lock, portMAX_DELAY);
+
+    // 2. Prüfen ob IP bereits existiert -> Session übernehmen
     for (size_t i = 0; i < h->config.max_clients; ++i) {
-        if (h->clients[i].fd == -1) {
+        if (h->clients[i].fd != -1 && h->clients[i].addr.s_addr == addr.sin_addr.s_addr) {
+            // Gefunden! Alte Session für diese IP aktualisieren
+            ESP_LOGI(TAG, "Client Reconnect detected (IP match). Replacing FD %d with %d", h->clients[i].fd, fd);
             h->clients[i].fd = fd;
             h->clients[i].last_seen = esp_timer_get_time() / 1000;
             xSemaphoreGive(h->lock);
             return ESP_OK;
         }
     }
+
+    // 3. Wenn nicht vorhanden, neuen Slot suchen
+    for (size_t i = 0; i < h->config.max_clients; ++i) {
+        if (h->clients[i].fd == -1) {
+            h->clients[i].fd = fd;
+            h->clients[i].addr = addr.sin_addr; // IP speichern
+            h->clients[i].last_seen = esp_timer_get_time() / 1000;
+            xSemaphoreGive(h->lock);
+            return ESP_OK;
+        }
+    }
     xSemaphoreGive(h->lock);
+    
+    ESP_LOGE(TAG, "Max clients reached, cannot add client %d", fd);
     return ESP_ERR_NO_MEM;
 }
 
