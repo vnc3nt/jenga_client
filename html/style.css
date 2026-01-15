@@ -25,11 +25,11 @@ body.dark .locate-btn {
     background-color: #374151;
 }
 
-.locate-btn:hover {
+.locate-btn:hover:not(:disabled) {
     background-color: #d1d5db;
 }
 
-body.dark .locate-btn:hover {
+body.dark .locate-btn:hover:not(:disabled) {
     background-color: #4b5563;
 }
 
@@ -192,7 +192,7 @@ body.dark .form-input:hover {
     color: #374151;
 }
 
-.btn-secondary:hover {
+.btn-secondary:hover:not(:disabled) {
     background-color: #d1d5db;
 }
 
@@ -201,7 +201,7 @@ body.dark .btn-secondary {
     color: #d1d5db;
 }
 
-body.dark .btn-secondary:hover {
+body.dark .btn-secondary:hover:not(:disabled) {
     background-color: #4b5563;
 }
 
@@ -210,7 +210,7 @@ body.dark .btn-secondary:hover {
     color: white;
 }
 
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
     background-color: #ea580c;
 }
 
@@ -232,11 +232,11 @@ body.dark .btn-secondary:hover {
     margin-bottom: 30px;
 }
 
-/* Disabled State für Buttons (ausgegraut) */
+/* Disabled State für Buttons (ausgegraut) - Einheitlich über Opacity */
 button:disabled {
-    opacity: 0.5;
+    opacity: 0.5 !important;
     cursor: not-allowed;
-    background-color: #555 !important; /* Dunkelgrau statt Orange */
+    /* Background-color removed to let original color show through with opacity */
     transform: none !important; /* Kein Klick-Effekt */
     box-shadow: none !important;
 }
@@ -652,8 +652,9 @@ body.dark .counter-value {
 }
 
 .decrement-btn:disabled {
-    background-color: #9ca3af;
+    opacity: 0.5; /* Redundant if button:disabled matches, but safe */
     cursor: not-allowed;
+    /* Background kept as original (red) but faded via opacity */
 }
 
 .increment-btn {
