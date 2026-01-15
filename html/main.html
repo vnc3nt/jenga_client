@@ -13,15 +13,6 @@
         <div id="mainPage" class="container">
             <!-- Header -->
             <div class="header">
-                <!-- Settings Button (Left) -->
-                <button id="settingsBtn" class="settings-toggle" aria-label="Settings">
-                    <!-- Klassisches Zahnrad (Outline Style) -->
-                    <svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="3"></circle>
-                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                    </svg>
-                </button>
-
                 <!-- Theme Toggle (Right) -->
                 <button id="themeToggle" class="theme-toggle" aria-label="Toggle theme">
                     <svg class="icon" width="24" height="24" viewBox="-2 -2 28 28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -118,6 +109,15 @@
                                 <polyline points="7 3 7 8 15 8"></polyline>
                             </svg>
                         </button>
+                        
+                         <!-- Tower Fell Toggle -->
+                        <button id="towerFellBtn" class="btn btn-secondary" style="display: flex; align-items: center; justify-content: center; padding: 0.5rem;" aria-pressed="false" title="Turmstatus ändern">
+                            <span id="towerFellIcon" style="display: flex; align-items: center;">
+                                <svg width="24" height="24" viewBox="0 0 100 100" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                  <path d="M20 85 h60 v-10 h-60 z M20 73 h18 v-10 h-18 z M41 73 h18 v-10 h-18 z M62 73 h18 v-10 h-18 z M20 61 h60 v-10 h-60 z M20 49 h18 v-10 h-18 z M41 49 h18 v-10 h-18 z M62 49 h18 v-10 h-18 z M20 37 h60 v-10 h-60 z M20 25 h18 v-10 h-18 z M41 25 h18 v-10 h-18 z M62 25 h18 v-10 h-18 z"/>
+                                </svg>
+                            </span> 
+                        </button>
 
                         <!-- Existierender Play Button -->
                         <button id="playPauseBtn" class="btn btn-primary">
@@ -141,127 +141,6 @@
                         <button id="decrementBtn" class="counter-btn decrement-btn" disabled>−</button>
                         <button id="incrementBtn" class="counter-btn increment-btn">+</button>
                     </div>
-                     <!-- Tower Fell Toggle -->
-                    <div style="margin-top: 1rem; text-align: center;">
-                        <button id="towerFellBtn" class="btn btn-secondary" style="width: 100%; display: flex; align-items: center; justify-content: center; padding: 0.5rem;" aria-pressed="false" title="Turmstatus ändern">
-                            <span id="towerFellIcon" style="display: flex; align-items: center;">
-                                <svg width="24" height="24" viewBox="0 0 100 100" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                                  <path d="M20 85 h60 v-10 h-60 z M20 73 h18 v-10 h-18 z M41 73 h18 v-10 h-18 z M62 73 h18 v-10 h-18 z M20 61 h60 v-10 h-60 z M20 49 h18 v-10 h-18 z M41 49 h18 v-10 h-18 z M62 49 h18 v-10 h-18 z M20 37 h60 v-10 h-60 z M20 25 h18 v-10 h-18 z M41 25 h18 v-10 h-18 z M62 25 h18 v-10 h-18 z"/>
-                                </svg>
-                            </span> 
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Config Page -->
-        <div id="configPage" class="container hidden">
-            <div class="header">
-                <button id="backBtn" class="settings-toggle" aria-label="Back">
-                    <svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="19" y1="12" x2="5" y2="12"></line>
-                        <polyline points="12 19 5 12 12 5"></polyline>
-                    </svg>
-                </button>
-                
-                <!-- Theme Toggle (Right) -->
-                <button id="themeToggleConfig" class="theme-toggle" aria-label="Toggle theme">
-                    <svg class="icon" width="24" height="24" viewBox="-2 -2 28 28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <!-- Sonne (vom Strich weg verschoben: -3.54, -3.54) -->
-                        <g transform="translate(-3.54 -3.54)">
-                            <path d="M9.173 14.83a4 4 0 1 1 5.657 -5.657"></path>
-                            <path d="M3 12h1"></path>
-                            <path d="M12 3v1"></path>
-                            <path d="M5.6 5.6l.7 .7"></path>
-                        </g>
-
-                        <!-- Mond (vom Strich weg verschoben: +3.54, +3.54) -->
-                        <g transform="translate(3.54 3.54)">
-                            <path d="M11.294 12.707l.174 .247a7.5 7.5 0 0 0 8.845 2.492a9 9 0 0 1 -14.671 2.914"></path>
-                        </g>
-
-                        <!-- Diagonale: ein einziger durchgehender Path -->
-                        <path d="M3 21L21 3"></path>
-
-                    </svg>
-                </button>
-
-                <div class="config-header-title">
-                    <h1 class="config-title">Konfiguration</h1>
-                </div>
-            </div>
-
-            <div class="config-content">
-                <div class="wifi-section" style="margin-bottom: 1rem;">
-                    <div class="section-header" style="display:flex; justify-content: space-between; align-items:center; margin-bottom: 0.75rem;">
-                        <h2 class="section-title" style="margin: 0;">Geräte-ID</h2>
-                        <button id="saveMdnsBtn" onclick="saveMdnsId()" class="btn btn-secondary btn-sm" title="Speichern">Speichern</button>
-                    </div>
-
-                    <div class="form-group" style="margin: 0;">
-                        <div style="display:flex; align-items:center; gap: 0.5rem;">
-                            <span style="color: var(--text-secondary);">jenga</span>
-                            <input type="number" id="mdnsIdInput" class="form-input" style="max-width: 90px;" placeholder="" inputmode="numeric" min="1" max="99" autocomplete="off" spellcheck="false">
-                            <span style="color: var(--text-secondary);">.local</span>
-                        </div>
-                        <div style="margin-top: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">
-                            <span>Leer lassen = ID wird beim Boot automatisch gewählt.</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="wifi-section">
-                    <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                        <h2 class="section-title" style="margin: 0;">Verfügbare Netzwerke</h2>
-                        <div class="action-buttons">
-                            <button id="refreshBtn" onclick="fetchNetworks()" class="btn btn-secondary btn-sm" title="Aktualisieren">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M23 4v6h-6M1 20v-6h6"></path>
-                                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-                                </svg>
-                            </button>
-                            <button id="restartBtn" onclick="restartESP()" class="btn btn-secondary btn-sm" title="Neustarten" style="margin-left: 0.5rem;">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
-                                    <line x1="12" y1="2" x2="12" y2="12"></line>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div id="networkList" class="wifi-list">
-                        <div class="loading">WLAN Suche läuft...</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Confirm Modal for Config -->
-        <div id="confirmConfigModal" class="modal">
-            <div class="modal-content">
-                <h3 class="modal-title" id="confirmTitle">Bestätigung</h3>
-                <p id="confirmMessage" style="margin-bottom: 1.5rem; color: #6b7280;">Sind Sie sicher?</p>
-                <div class="modal-actions">
-                    <button id="confirmCancelBtn" class="btn btn-secondary">Abbrechen</button>
-                    <button id="confirmOkBtn" class="btn btn-primary">Bestätigen</button>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Wifi Modal -->
-        <div id="wifiModal" class="modal">
-            <div class="modal-content">
-                <h3 class="modal-title">Verbinden</h3>
-                <div class="form-group">
-                    <input type="text" id="ssidInput" class="form-input" placeholder="SSID" readonly>
-                </div>
-                <div class="form-group">
-                    <input type="password" id="wifiPwInput" class="form-input" placeholder="WLAN Passwort">
-                </div>
-                <div class="modal-actions">
-                    <button id="wifiCancelBtn" onclick="closeWifiModal()" class="btn btn-secondary">Abbrechen</button>
-                    <button id="wifiConnectBtn" onclick="saveWifi()" class="btn btn-primary">Verbinden</button>
                 </div>
             </div>
         </div>
