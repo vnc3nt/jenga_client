@@ -8,7 +8,7 @@ body.dark { background-color: #111827; color: #ffffff; }
 .header { padding: 1.5rem; position: relative; display: flex; justify-content: center; align-items: center; }
 .header-controls { position: absolute; top: 1.5rem; right: 1.5rem; display: flex; gap: 0.5rem; }
 
-.settings-toggle {
+.locate-btn {
     position: absolute;
     top: 1.5rem;
     left: 1.5rem;
@@ -21,17 +21,19 @@ body.dark { background-color: #111827; color: #ffffff; }
     color: inherit;
 }
 
-body.dark .settings-toggle {
+body.dark .locate-btn {
     background-color: #374151;
 }
 
-.settings-toggle:hover {
+.locate-btn:hover {
     background-color: #d1d5db;
 }
 
-body.dark .settings-toggle:hover {
+body.dark .locate-btn:hover {
     background-color: #4b5563;
 }
+
+
 
 .theme-toggle {
     position: absolute;
@@ -819,6 +821,8 @@ body.dark .config-title {
     width: 0;
     height: 0;
 }
+
+
 
 .slider {
     height: 3rem;

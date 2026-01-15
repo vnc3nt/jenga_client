@@ -2,6 +2,7 @@
 #include <esp_event.h>
 #include "driver/gpio.h"
 #include <esp_log.h>
+#include "config_wifi.h" // Include for Config Handlers
 #include <esp_system.h>
 #include <nvs_flash.h>
 #include <sys/param.h>
@@ -104,6 +105,8 @@ extern void api_set_team_name(const char* team_name);
 extern void api_update_entry(uint32_t id, const char* team, int moves, int64_t time, bool fell);
 extern void api_delete_entry(uint32_t id);
 extern void api_clear_leaderboard();
+// LOCATE
+extern void api_trigger_locate();
 
 // --- WEBSERVER & WEBSOCKET ---
 static httpd_handle_t server = NULL;
@@ -289,6 +292,9 @@ static esp_err_t ws_handler(httpd_req_t *req)
                 else if (strcmp(cmd->valuestring, "clear_leaderboard") == 0) {
                     api_clear_leaderboard();
                 }
+                else if (strcmp(cmd->valuestring, "locate_device") == 0) {
+                    api_trigger_locate();
+                }
             }
             cJSON_Delete(root);
         } else {
@@ -458,7 +464,7 @@ static httpd_handle_t start_wss_echo_server(void)
     config.open_fn = wss_open_fd;
     config.close_fn = wss_close_fd;
     
-    config.max_uri_handlers = 12;
+    config.max_uri_handlers = 20; // Increased for Config Handlers
 
     if (httpd_start(&server, &config) != ESP_OK) {
         ESP_LOGI(TAG, "Error starting server!");
@@ -488,6 +494,38 @@ static httpd_handle_t start_wss_echo_server(void)
 
     httpd_uri_t favicon_uri = { .uri = "/favicon.ico", .method = HTTP_GET, .handler = favicon_handler, .user_ctx = NULL };
     httpd_register_uri_handler(server, &favicon_uri);
+
+    // --- Config Page Handlers (Imported from config_wifi) ---
+    httpd_uri_t config_html_uri = { .uri = "/config.html", .method = HTTP_GET, .handler = config_html_handler, .user_ctx = NULL };
+    httpd_register_uri_handler(server, &config_html_uri);
+
+    httpd_uri_t config_alias_uri = { .uri = "/config", .method = HTTP_GET, .handler = config_html_handler, .user_ctx = NULL };
+    httpd_register_uri_handler(server, &config_alias_uri);
+
+    httpd_uri_t config_js_uri = { .uri = "/config.js", .method = HTTP_GET, .handler = config_js_handler, .user_ctx = NULL };
+    httpd_register_uri_handler(server, &config_js_uri);
+
+    httpd_uri_t status_uri = { .uri = "/status", .method = HTTP_GET, .handler = status_handler, .user_ctx = NULL };
+    httpd_register_uri_handler(server, &status_uri);
+
+    httpd_uri_t scan_uri = { .uri = "/scan", .method = HTTP_GET, .handler = scan_handler, .user_ctx = NULL };
+    httpd_register_uri_handler(server, &scan_uri);
+
+    httpd_uri_t mdns_get_uri = { .uri = "/mdns", .method = HTTP_GET, .handler = mdns_get_handler, .user_ctx = NULL };
+    httpd_register_uri_handler(server, &mdns_get_uri);
+
+    httpd_uri_t mdns_set_uri = { .uri = "/mdns", .method = HTTP_POST, .handler = mdns_set_handler, .user_ctx = NULL };
+    httpd_register_uri_handler(server, &mdns_set_uri);
+
+    httpd_uri_t save_uri = { .uri = "/save", .method = HTTP_POST, .handler = save_handler, .user_ctx = NULL };
+    httpd_register_uri_handler(server, &save_uri);
+
+    httpd_uri_t forget_uri = { .uri = "/forget", .method = HTTP_POST, .handler = forget_handler, .user_ctx = NULL };
+    httpd_register_uri_handler(server, &forget_uri);
+
+    httpd_uri_t restart_uri = { .uri = "/restart", .method = HTTP_POST, .handler = restart_handler, .user_ctx = NULL };
+    httpd_register_uri_handler(server, &restart_uri);
+    // ----------------------------------------------------
     // ---------------------------------------
 
     ESP_LOGI(TAG, "WebSocket server started successfully");

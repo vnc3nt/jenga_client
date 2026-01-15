@@ -24,7 +24,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const playPauseBtn = document.getElementById('playPauseBtn');
     const playIcon = document.getElementById('playIcon');
     const pauseIcon = document.getElementById('pauseIcon');
-    const playPauseText = document.getElementById('playPauseText');
     const progressFill = document.getElementById('progressFill');
     
     const counterValue = document.getElementById('counterValue');
@@ -46,6 +45,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const inputSec = document.getElementById('inputSec');
     const modalSaveBtn = document.getElementById('modalSaveBtn');
     const modalCancelBtn = document.getElementById('modalCancelBtn');
+
+    // LOCATE BTN
+    const locateBtn = document.getElementById('locateBtn');
+    if (locateBtn) {
+        locateBtn.addEventListener('click', () => {
+             // Disable for 3 seconds
+             locateBtn.disabled = true;
+             locateBtn.style.opacity = "0.5";
+             sendCommand('locate_device');
+             setTimeout(() => {
+                 locateBtn.disabled = false;
+                 locateBtn.style.opacity = "1";
+             }, 3000);
+        });
+    }
 
     // --- THEME INIT ---
     const savedTheme = localStorage.getItem('theme');
@@ -69,25 +83,39 @@ document.addEventListener('DOMContentLoaded', () => {
     // REMOVED themeToggleConfig listener
 
     // --- GAME LOGIC ---
-    // Tower Fell Toggle Logic
+    // Tower Fell Logic - Consolidated
+    
+    // Remove the old duplicate updateTowerFellUI and listener if they exist
+    // The previous code had two definitions of updateTowerFellUI and two listeners. 
+    // We are replacing the FIRST block here, effective removing it or redefining it properly.
+    
+    // Actually, I will just remove this block entirely as the better logic is further down.
+    // Or better, I will keep declaration here but empty, to avoid reference errors if it's called before definition?
+    // JS functions are hoisted if function decoration. But if const, no.
+    // The other definition was a function declaration: function updateTowerFellUI() {}
+    // So it overwrites?
+    // In JS: Last function declaration wins.
+    // But the listeners are attached sequentially.
+    // So both listeners run.
+    
+    // I will replace lines 73-88 with NOTHING (or verify they are gone).
+    // Ah, wait. Lines 73-82 were:
+    /*
     function updateTowerFellUI() {
         if (isTowerFell) {
             towerFellBtn.classList.add('btn-primary');
-            towerFellBtn.classList.remove('btn-secondary');
-            towerFellBtn.setAttribute('aria-pressed', 'true');
-            towerFellIcon.innerHTML = iconFallen;
-        } else {
-            towerFellBtn.classList.add('btn-secondary');
-            towerFellBtn.classList.remove('btn-primary');
-            towerFellBtn.setAttribute('aria-pressed', 'false');
-            towerFellIcon.innerHTML = iconStanding;
-        }
-    }
+            ...
+    */
+    // And lines 503-524 were the second definition.
+    // And lines 86-89 were the FIRST listener.
+    // And lines 527-535 were the SECOND listener.
+    
+    // ACTION: I will remove the FIRST Listener and the FIRST Function (or modify it to use the new logic if I want code locality).
+    // It's cleaner to remove the top block and keep the bottom block, BUT the bottom block is inside `if (towerFellBtn)`.
+    // The top block assumes `towerFellBtn` exists.
+    
+    // I will remove the top block.
 
-    towerFellBtn.addEventListener('click', () => {
-        isTowerFell = !isTowerFell;
-        updateTowerFellUI();
-    });
 
     function formatTime(seconds) {
         const m = Math.floor(seconds / 60).toString().padStart(2, '0');
@@ -130,7 +158,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (gameState.isPlaying) {
             playIcon.classList.add('hidden');
             pauseIcon.classList.remove('hidden');
-            playPauseText.textContent = 'Pause';
             if (resetBtn) resetBtn.disabled = true;
             if (modeToggle) modeToggle.disabled = true;
             
@@ -140,7 +167,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             playIcon.classList.remove('hidden');
             pauseIcon.classList.add('hidden');
-            playPauseText.textContent = 'Play';
             
             // NEU: Reset Button Logic (Nur aktiv, wenn Zeit lief oder Züge gemacht wurden)
             if (resetBtn) {
@@ -316,10 +342,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let editingId = null;
 
     function openEditModal(id) {
-        const entry = gameState.leaderboard.find(e => e.id === id || e.entry_id === id); // Handle inconsistent naming if any
+        // Robust matching (String vs Number)
+        const entry = gameState.leaderboard.find(e => String(e.id) === String(id) || String(e.entry_id) === String(id)); 
         if (!entry) return;
 
-        editingId = id;
+        editingId = entry.entry_id || entry.id; // Prefer entry_id (number) for backend API
         editTeamName.value = entry.team;
         editMoves.value = entry.moves;
         editTimeSec.value = Math.floor(entry.time / 1000); // Display in seconds? Or raw ms? Let's do seconds.
@@ -415,7 +442,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 btn.addEventListener('click', (e) => {
                     // Prevent bubbling?
                     e.stopPropagation();
-                    const id = parseInt(btn.dataset.id);
+                    const id = btn.dataset.id; // Use string for robustness
                     requestPassword('edit', id);
                 });
             });
@@ -496,6 +523,7 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'set_team_name':
                 payload = { cmd: 'set_team_name', team: value };
                 break;
+            case 'locate_device': payload = { cmd: 'locate_device' }; break;
             case 'clear_leaderboard': payload = { cmd: 'clear_leaderboard' }; break;
         }
         socket.send(JSON.stringify(payload));
@@ -506,23 +534,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!towerFellBtn) return;
         
         if (isTowerFell) {
-            towerFellBtn.style.color = '#dc2626'; // Red
-            towerFellBtn.innerHTML = `
-            <span style="display: flex; align-items: center; color: #dc2626;">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                    <line x1="12" y1="9" x2="12" y2="13"></line>
-                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                </svg>
-            </span>`;
+            towerFellBtn.style.color = '#FF8C00'; // Orange
+            towerFellBtn.innerHTML = `<span style="display: flex; align-items: center; color: #FF8C00;">${iconFallen}</span>`;
         } else {
              towerFellBtn.style.color = ''; // Default
-             towerFellBtn.innerHTML = `
-             <span id="towerFellIcon" style="display: flex; align-items: center;">
-                <svg width="24" height="24" viewBox="0 0 100 100" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M20 85 h60 v-10 h-60 z M20 73 h18 v-10 h-18 z M41 73 h18 v-10 h-18 z M62 73 h18 v-10 h-18 z M20 61 h60 v-10 h-60 z M20 49 h18 v-10 h-18 z M41 49 h18 v-10 h-18 z M62 49 h18 v-10 h-18 z M20 37 h60 v-10 h-60 z M20 25 h18 v-10 h-18 z M41 25 h18 v-10 h-18 z M62 25 h18 v-10 h-18 z"/>
-                </svg>
-             </span>`;
+             towerFellBtn.innerHTML = `<span id="towerFellIcon" style="display: flex; align-items: center;">${iconStanding}</span>`;
         }
     }
 

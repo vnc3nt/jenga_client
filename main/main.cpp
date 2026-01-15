@@ -38,6 +38,7 @@ const gpio_num_t ROBOT_PIN = GPIO_NUM_14;
 #define LONG_PRESS_TIME 3000 // 3 Sekunden
 bool still_startup_holding = true;
 bool is_in_config_mode = false;
+volatile bool is_locating_active = false; // Flag für Locate-Animation
 
 // --- NEUE SPIEL VARIABLEN ---
 // LeaderboardEntry ist jetzt in global_vars.h definiert!
@@ -410,6 +411,22 @@ int64_t api_get_time_countup() { return time_countup; }
 bool api_get_is_paused() { return is_paused; }
 int api_get_game_mode() { return (int)current_game_mode; }
 
+// --- LOCATE FUNCTION ---
+void api_trigger_locate() {
+    ESP_LOGI(TAG, "Locate trigger received! Blinking LED...");
+    is_locating_active = true;
+    
+    // 3 x Blinken (Blockierend ist hier okay, da nur kurz)
+    for(int i=0; i<3; i++) {
+        gpio_set_level(CONNECTION_LED_PIN, 1);
+        vTaskDelay(pdMS_TO_TICKS(500));
+        gpio_set_level(CONNECTION_LED_PIN, 0);
+        vTaskDelay(pdMS_TO_TICKS(500));
+    }
+    
+    is_locating_active = false;
+}
+
 // --- LOGIK FUNKTIONEN ---
 
 void toggle_pause() {
@@ -626,7 +643,9 @@ extern "C" void app_main(void) {
         }
         else {
             // --- IM SPIELMODUS ---
-            gpio_set_level(CONNECTION_LED_PIN, 0);
+            if (!is_locating_active) {
+                gpio_set_level(CONNECTION_LED_PIN, 0);
+            }
             
             // 1. Zeitberechnung (Delta Time)
             int64_t current_time = esp_timer_get_time();

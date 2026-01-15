@@ -103,7 +103,7 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
 // --- HANDLER ---
 
 // Scan Handler
-static esp_err_t scan_handler(httpd_req_t *req) {
+esp_err_t scan_handler(httpd_req_t *req) {
     wifi_scan_config_t scan_config = {};
     scan_config.ssid = 0;
     scan_config.bssid = 0;
@@ -151,7 +151,7 @@ static esp_err_t scan_handler(httpd_req_t *req) {
 }
 
 // Status Handler
-static esp_err_t status_handler(httpd_req_t *req) {
+esp_err_t status_handler(httpd_req_t *req) {
     cJSON *root = cJSON_CreateObject();
     
     // 1. Check Connection
@@ -194,7 +194,7 @@ static bool is_all_digits(const char *s)
 }
 
 // Geräte-ID Handler (GET): { id: number|null }
-static esp_err_t mdns_get_handler(httpd_req_t *req)
+esp_err_t mdns_get_handler(httpd_req_t *req)
 {
     bool has_id = false;
     int32_t id_value = 0;
@@ -243,7 +243,7 @@ static esp_err_t mdns_get_handler(httpd_req_t *req)
 }
 
 // Geräte-ID Handler (POST): { id: number|null } (null/fehlend => auto)
-static esp_err_t mdns_set_handler(httpd_req_t *req)
+esp_err_t mdns_set_handler(httpd_req_t *req)
 {
     char buf[128];
     int ret = httpd_req_recv(req, buf, sizeof(buf) - 1);
@@ -330,7 +330,7 @@ static esp_err_t mdns_set_handler(httpd_req_t *req)
 }
 
 // Forget Network Handler
-static esp_err_t forget_handler(httpd_req_t *req) {
+esp_err_t forget_handler(httpd_req_t *req) {
     nvs_handle_t my_handle;
     if (nvs_open("storage", NVS_READWRITE, &my_handle) == ESP_OK) {
         nvs_erase_key(my_handle, "wifi_ssid");
@@ -349,7 +349,7 @@ static esp_err_t forget_handler(httpd_req_t *req) {
 }
 
 // Save Handler
-static esp_err_t save_handler(httpd_req_t *req) {
+esp_err_t save_handler(httpd_req_t *req) {
     char buf[200];
     int ret = httpd_req_recv(req, buf, sizeof(buf) - 1);
     if (ret <= 0) return ESP_FAIL;
@@ -394,7 +394,7 @@ static esp_err_t save_handler(httpd_req_t *req) {
 }
 
 // Restart Handler
-static esp_err_t restart_handler(httpd_req_t *req) {
+esp_err_t restart_handler(httpd_req_t *req) {
     ESP_LOGI(TAG, "Restart requested via WebUI");
     httpd_resp_send(req, "OK", 2);
     // Allow time for the response to be sent
@@ -404,11 +404,11 @@ static esp_err_t restart_handler(httpd_req_t *req) {
 }
 
 // File Handlers
-static esp_err_t config_html_handler(httpd_req_t *req) {
+esp_err_t config_html_handler(httpd_req_t *req) {
     httpd_resp_set_type(req, "text/html");
     return httpd_resp_send(req, (const char *)config_html_start, config_html_end - config_html_start);
 }
-static esp_err_t config_js_handler(httpd_req_t *req) {
+esp_err_t config_js_handler(httpd_req_t *req) {
     httpd_resp_set_type(req, "text/javascript");
     return httpd_resp_send(req, (const char *)config_js_start, config_js_end - config_js_start);
 }
