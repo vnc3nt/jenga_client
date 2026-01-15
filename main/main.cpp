@@ -321,6 +321,88 @@ void api_save_and_reset(const char* team_name, bool tower_fell) {
     api_reset_time();
 }
 
+// --- NEU: LEADERBOARD EDIT API ---
+
+void api_update_entry(uint32_t id, const char* team, int moves, int64_t time_ms, bool fell) {
+    xSemaphoreTake(leaderboard_mutex, portMAX_DELAY);
+    
+    bool found = false;
+    // Check Countdown vector
+    for (auto& e : leaderboard_countdown) {
+        if (e.entry_id == id) {
+            strlcpy(e.team_name, team, sizeof(e.team_name));
+            e.moves = moves;
+            e.time_ms = time_ms;
+            e.tower_fell = fell;
+            found = true;
+            break;
+        }
+    }
+    
+    // Check Countup vector if not found
+    if (!found) {
+        for (auto& e : leaderboard_countup) {
+            if (e.entry_id == id) {
+                strlcpy(e.team_name, team, sizeof(e.team_name));
+                e.moves = moves;
+                e.time_ms = time_ms;
+                e.tower_fell = fell;
+                found = true;
+                break;
+            }
+        }
+    }
+    
+    if (found) {
+        ESP_LOGI(TAG, "Entry %lu updated.", (unsigned long)id);
+        save_leaderboards_nvs();
+        broadcast_leaderboard_udp();
+    } else {
+        ESP_LOGW(TAG, "Entry %lu not found for update.", (unsigned long)id);
+    }
+    
+    xSemaphoreGive(leaderboard_mutex);
+}
+
+void api_delete_entry(uint32_t id) {
+     xSemaphoreTake(leaderboard_mutex, portMAX_DELAY);
+     
+     // Remove from Countdown
+     auto it = std::remove_if(leaderboard_countdown.begin(), leaderboard_countdown.end(), 
+                              [id](const LeaderboardEntry& e){ return e.entry_id == id; });
+     if (it != leaderboard_countdown.end()) {
+         leaderboard_countdown.erase(it, leaderboard_countdown.end());
+         ESP_LOGI(TAG, "Entry %lu deleted from Countdown.", (unsigned long)id);
+     }
+     
+     // Remove from Countup
+     auto it2 = std::remove_if(leaderboard_countup.begin(), leaderboard_countup.end(), 
+                              [id](const LeaderboardEntry& e){ return e.entry_id == id; });
+     if (it2 != leaderboard_countup.end()) {
+         leaderboard_countup.erase(it2, leaderboard_countup.end());
+         ESP_LOGI(TAG, "Entry %lu deleted from Countup.", (unsigned long)id);
+     }
+     
+     save_leaderboards_nvs();
+     broadcast_leaderboard_udp();
+     
+     xSemaphoreGive(leaderboard_mutex);
+}
+
+void api_clear_leaderboard() {
+    xSemaphoreTake(leaderboard_mutex, portMAX_DELAY);
+    
+    leaderboard_countdown.clear();
+    leaderboard_countup.clear();
+    
+    ESP_LOGI(TAG, "All leaderboards cleared.");
+    
+    save_leaderboards_nvs();
+    broadcast_leaderboard_udp();
+    
+    xSemaphoreGive(leaderboard_mutex);
+}
+
 // Getter Funktionen (können vom Webserver genutzt werden)
 int api_get_piece_counter() { return piece_counter; }
 int64_t api_get_time_countdown() { return time_countdown; }

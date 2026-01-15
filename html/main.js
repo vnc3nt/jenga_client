@@ -184,17 +184,207 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- API / WEBSOCKET ---
     let socket;
 
-    const leaderboardList = document.getElementById('leaderboardList');
+    // --- LEADERBOARD LOGIC (Fullscreen, Filter, Edit) ---
+    const leaderboardContainer = document.getElementById('leaderboardContainer');
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+    const filterBtn = document.getElementById('filterBtn');
     
-    // --- RENDER LEADERBOARD ---
+    // State
+    let isFullscreen = false;
+    let filterOnlyBest = false;
+    let filterTowerStanding = false;
+    let currentEditEntryIndex = null; // Index in the currently displayed filtered list? Or ID?
+    // Using ID is better if we have it. Backend sends entry_id.
+    
+    // Icons
+    const iconMinimize = `<svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3H5m3-3h3m-3 0 18 18m-3-3v-3h3m-3 3h-3"/></svg>`; // Simplified pseudo minimize
+    const iconMaximize = `<svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>`;
+    const iconEdit = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`;
+
+    // --- FULLSCREEN TOGGLE ---
+    fullscreenBtn.addEventListener('click', () => {
+        isFullscreen = !isFullscreen;
+        leaderboardContainer.classList.toggle('fullscreen', isFullscreen);
+        fullscreenBtn.innerHTML = isFullscreen ? iconMinimize : iconMaximize;
+        
+        // Show/Hide Footer
+        document.getElementById('leaderboardFooter').classList.toggle('hidden', !isFullscreen);
+
+        // Re-render to show/hide edit icons
+        renderLeaderboard(gameState.leaderboard);
+    });
+
+    // --- FILTER MODAL ---
+    const filterModal = document.getElementById('filterModal');
+    const filterBestToggle = document.getElementById('filterBestToggle');
+    const filterTowerToggle = document.getElementById('filterTowerToggle');
+    const filterCloseBtn = document.getElementById('filterCloseBtn');
+
+    filterBtn.addEventListener('click', () => {
+        filterModal.classList.add('active');
+    });
+
+    filterCloseBtn.addEventListener('click', () => {
+        filterModal.classList.remove('active');
+    });
+
+    // Apply Filter Logic
+    function getFilteredLeaderboard(entries) {
+        if (!entries) return [];
+        let filtered = [...entries];
+
+        // Filter 1: Tower Standing (Only keep entries where fell == false)
+        if (filterTowerStanding) {
+            filtered = filtered.filter(e => !e.fell);
+        }
+
+        // Filter 2: Best per Team
+        if (filterOnlyBest) {
+            const bestMap = new Map();
+            filtered.forEach(entry => {
+                const team = entry.team || "Unknown";
+                // Criteria: Mode specific?
+                // Assuming standard logic: More moves is better. If moves equal, less time is better (in countdown: more remaining time? No, backend sends duration).
+                // Backend sorted it already. So the first occurrence is the best?
+                // Actually backend sort: Moves DESC, Time ASC. So yes, first occurrence is best.
+                if (!bestMap.has(team)) {
+                    bestMap.set(team, entry);
+                }
+            });
+            filtered = Array.from(bestMap.values());
+            // Re-sort because Map iteration order is insertion order, which is correct here as input was sorted.
+        }
+
+        return filtered;
+    }
+
+    // Toggle Handlers
+    filterBestToggle.addEventListener('change', (e) => {
+        filterOnlyBest = e.target.checked;
+        renderLeaderboard(gameState.leaderboard);
+    });
+
+    filterTowerToggle.addEventListener('change', (e) => {
+        filterTowerStanding = e.target.checked;
+        renderLeaderboard(gameState.leaderboard);
+    });
+
+    // --- PASSWORD & EDIT LOGIC ---
+    const passwordModal = document.getElementById('passwordModal');
+    const passwordInput = document.getElementById('passwordInput');
+    const pwConfirmBtn = document.getElementById('pwConfirmBtn');
+    const pwCancelBtn = document.getElementById('pwCancelBtn');
+    
+    let pendingAction = null; // 'edit' or 'deleteAll'
+    let pendingEntryId = null;
+
+    function requestPassword(action, entryId = null) {
+        pendingAction = action;
+        pendingEntryId = entryId;
+        passwordInput.value = '';
+        passwordModal.classList.add('active');
+        passwordInput.focus();
+    }
+
+    function closePasswordModal() {
+        passwordModal.classList.remove('active');
+        pendingAction = null;
+        pendingEntryId = null;
+    }
+
+    pwCancelBtn.addEventListener('click', closePasswordModal);
+
+    pwConfirmBtn.addEventListener('click', () => {
+        if (passwordInput.value === 'Weihnachtsbaum') {
+            closePasswordModal();
+            if (pendingAction === 'edit') {
+                openEditModal(pendingEntryId);
+            } else if (pendingAction === 'deleteAll') {
+                sendCommand('clear_leaderboard');
+            }
+        } else {
+            alert('Falsches Passwort!');
+            passwordInput.value = '';
+            passwordInput.focus();
+        }
+    });
+    
+    // --- EDIT MODAL ---
+    const editEntryModal = document.getElementById('editEntryModal');
+    const editTeamName = document.getElementById('editTeamName');
+    const editMoves = document.getElementById('editMoves');
+    const editTimeSec = document.getElementById('editTimeSec');
+    const editTowerFellToggle = document.getElementById('editTowerFellToggle');
+    const editSaveBtn = document.getElementById('editSaveBtn');
+    const editCancelBtn = document.getElementById('editCancelBtn');
+    const deleteEntryBtn = document.getElementById('deleteEntryBtn');
+    
+    let editingId = null;
+
+    function openEditModal(id) {
+        const entry = gameState.leaderboard.find(e => e.id === id || e.entry_id === id); // Handle inconsistent naming if any
+        if (!entry) return;
+
+        editingId = id;
+        editTeamName.value = entry.team;
+        editMoves.value = entry.moves;
+        editTimeSec.value = Math.floor(entry.time / 1000); // Display in seconds? Or raw ms? Let's do seconds.
+        editTowerFellToggle.checked = entry.fell;
+        
+        editEntryModal.classList.add('active');
+    }
+
+    function closeEditModal() {
+        editEntryModal.classList.remove('active');
+        editingId = null;
+    }
+
+    editCancelBtn.addEventListener('click', closeEditModal);
+
+    editSaveBtn.addEventListener('click', () => {
+        if (editingId === null) return;
+        
+        const payload = {
+            cmd: 'update_entry',
+            id: editingId,
+            team: editTeamName.value,
+            moves: parseInt(editMoves.value),
+            time: parseInt(editTimeSec.value) * 1000,
+            fell: editTowerFellToggle.checked
+        };
+        socket.send(JSON.stringify(payload));
+        closeEditModal();
+    });
+
+    deleteEntryBtn.addEventListener('click', () => {
+         if (editingId === null) return;
+         if(confirm("Diesen Eintrag wirklich löschen?")) {
+             const payload = {
+                 cmd: 'delete_entry',
+                 id: editingId
+             };
+             socket.send(JSON.stringify(payload));
+             closeEditModal();
+         }
+    });
+
+    // Delete All
+    document.getElementById('deleteAllBtn').addEventListener('click', () => {
+        requestPassword('deleteAll');
+    });
+
+    // --- RENDER LEADERBOARD (UPDATED) ---
     function renderLeaderboard(entries) {
+        // Use filtered list
+        const filteredEntries = getFilteredLeaderboard(entries);
+
         leaderboardList.innerHTML = '';
-        if (!entries || entries.length === 0) {
-            leaderboardList.innerHTML = '<div class="leaderboard-item"><div class="leaderboard-info" style="text-align: center; width: 100%;">Noch keine Einträge</div></div>';
+        if (!filteredEntries || filteredEntries.length === 0) {
+            leaderboardList.innerHTML = '<div class="leaderboard-item"><div class="leaderboard-info" style="text-align: center; width: 100%;">Keine Einträge (Filter aktiv?)</div></div>';
             return;
         }
 
-        entries.forEach((entry, index) => {
+        filteredEntries.forEach((entry, index) => {
             const item = document.createElement('div');
             item.className = 'leaderboard-item';
             
@@ -204,16 +394,38 @@ document.addEventListener('DOMContentLoaded', () => {
             const m = Math.floor(entry.time / 60000).toString().padStart(2, '0');
             const s = Math.floor((entry.time % 60000) / 1000).toString().padStart(2, '0');
             const timeStr = `${m}:${s}`;
+            
+            // Use entry ID (backend provided)
+            const entryId = entry.entry_id || entry.id || index; // Fallback
 
-            item.innerHTML = `
+            let html = `
                 <div class="leaderboard-rank">#${index + 1}</div>
                 <div class="leaderboard-info">
                     <span class="team-name">${entry.team}</span>
                     <span class="team-stats">${entry.moves} Züge | ${timeStr} | ${statusIcon}</span>
                 </div>
             `;
+            
+            // Add Edit Icon ONLY if Fullscreen
+            if (isFullscreen) {
+                html += `<button class="edit-icon-btn" data-id="${entryId}" aria-label="Edit">${iconEdit}</button>`;
+            }
+
+            item.innerHTML = html;
             leaderboardList.appendChild(item);
         });
+
+        // Add Listeners to new buttons
+        if (isFullscreen) {
+            document.querySelectorAll('.edit-icon-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    // Prevent bubbling?
+                    e.stopPropagation();
+                    const id = parseInt(btn.dataset.id);
+                    requestPassword('edit', id);
+                });
+            });
+        }
     }
 
     function initWebSocket() {
@@ -247,6 +459,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // NEU: Leaderboard Update
                 if (data.leaderboard) {
+                   gameState.leaderboard = data.leaderboard;
                    renderLeaderboard(data.leaderboard);
                 }
 
@@ -276,6 +489,7 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'set_team_name':
                 payload = { cmd: 'set_team_name', team: value };
                 break;
+            case 'clear_leaderboard': payload = { cmd: 'clear_leaderboard' }; break;
         }
         socket.send(JSON.stringify(payload));
     }

@@ -100,6 +100,11 @@ extern void api_reset_time();
 extern void api_save_and_reset(const char* team_name, bool tower_fell);
 extern void api_set_team_name(const char* team_name);
 
+// --- API FUNKTIONEN FÜR LEADERBOARD EDIT ---
+extern void api_update_entry(uint32_t id, const char* team, int moves, int64_t time, bool fell);
+extern void api_delete_entry(uint32_t id);
+extern void api_clear_leaderboard();
+
 // --- WEBSERVER & WEBSOCKET ---
 static httpd_handle_t server = NULL;
 
@@ -258,6 +263,31 @@ static esp_err_t ws_handler(httpd_req_t *req)
                     cJSON *team = cJSON_GetObjectItem(root, "team");
                     const char* teamName = (cJSON_IsString(team)) ? team->valuestring : "";
                     api_set_team_name(teamName);
+                }
+                // NEU: Update Entry Command
+                else if (strcmp(cmd->valuestring, "update_entry") == 0) {
+                    // id, team, moves, time, fell
+                    cJSON *id = cJSON_GetObjectItem(root, "id");
+                    cJSON *team = cJSON_GetObjectItem(root, "team");
+                    cJSON *moves = cJSON_GetObjectItem(root, "moves");
+                    cJSON *timeVal = cJSON_GetObjectItem(root, "time");
+                    cJSON *fell = cJSON_GetObjectItem(root, "fell");
+                    
+                    if (cJSON_IsNumber(id) && cJSON_IsString(team) && cJSON_IsNumber(moves) && cJSON_IsNumber(timeVal)) {
+                        bool fellBool = cJSON_IsTrue(fell);
+                        api_update_entry((uint32_t)id->valueint, team->valuestring, moves->valueint, (int64_t)timeVal->valuedouble, fellBool);
+                    }
+                }
+                // NEU: Delete Entry Command
+                else if (strcmp(cmd->valuestring, "delete_entry") == 0) {
+                    cJSON *id = cJSON_GetObjectItem(root, "id");
+                    if (cJSON_IsNumber(id)) {
+                        api_delete_entry((uint32_t)id->valueint);
+                    }
+                }
+                // NEU: Clear Leaderboard Command
+                else if (strcmp(cmd->valuestring, "clear_leaderboard") == 0) {
+                    api_clear_leaderboard();
                 }
             }
             cJSON_Delete(root);
