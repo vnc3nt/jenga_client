@@ -110,14 +110,17 @@ struct async_resp_arg {
     int fd;
 };
 
-static const size_t max_clients = 4;
+// WebSocket-Clients (Keep-Alive überwacht nur diese)
+static const size_t max_ws_clients = 4;
+// HTTPD-Sockets (Browser macht mehrere parallele HTTP Fetches + WS)
+static const size_t max_open_sockets = 16;
 
 // --- BROADCAST FUNKTION (Wird von main.cpp aufgerufen) ---
 void ws_broadcast(const char* str) {
     if (server == NULL) return;
     
-    size_t clients = max_clients;
-    int client_fds[max_clients];
+    size_t clients = max_open_sockets;
+    int client_fds[max_open_sockets];
     
     // Liste aller verbundenen Clients abrufen
     if (httpd_get_client_list(server, &clients, client_fds) == ESP_OK) {
@@ -146,6 +149,17 @@ static esp_err_t ws_handler(httpd_req_t *req)
 {
     if (req->method == HTTP_GET) {
         ESP_LOGI(TAG, "Handshake done, new connection opened");
+
+        // Ab hier ist es ein echter WebSocket-Client: erst jetzt in Keep-Alive aufnehmen.
+        {
+            wss_keep_alive_t h = (wss_keep_alive_t)httpd_get_global_user_ctx(req->handle);
+            if (h != NULL) {
+                int fd = httpd_req_to_sockfd(req);
+                (void)wss_keep_alive_add_client(h, fd);
+                (void)wss_keep_alive_client_is_active(h, fd);
+            }
+        }
+
         return ESP_OK;
     }
     
@@ -173,6 +187,19 @@ static esp_err_t ws_handler(httpd_req_t *req)
             ESP_LOGE(TAG, "httpd_ws_recv_frame failed with %d", ret);
             free(buf);
             return ret;
+        }
+    }
+
+    // Eingehende WS-Frames zählen als Aktivität (wichtig für Keep-Alive / Reconnect)
+    {
+        wss_keep_alive_t h = (wss_keep_alive_t)httpd_get_global_user_ctx(req->handle);
+        if (h != NULL) {
+            int fd = httpd_req_to_sockfd(req);
+            esp_err_t ar = wss_keep_alive_client_is_active(h, fd);
+            if (ar == ESP_ERR_NOT_FOUND) {
+                (void)wss_keep_alive_add_client(h, fd);
+                (void)wss_keep_alive_client_is_active(h, fd);
+            }
         }
     }
 
@@ -225,6 +252,15 @@ static esp_err_t ws_handler(httpd_req_t *req)
         ws_pkt.type = HTTPD_WS_TYPE_PONG;
         httpd_ws_send_frame(req, &ws_pkt);
     }
+    else if (ws_pkt.type == HTTPD_WS_TYPE_PONG) {
+        // PONG ist die Antwort auf unser PING (Keep-Alive).
+        // Ohne dieses Update würde der Client nach wenigen Sekunden als "not alive" gelten.
+        wss_keep_alive_t h = (wss_keep_alive_t)httpd_get_global_user_ctx(req->handle);
+        if (h != NULL) {
+            int fd = httpd_req_to_sockfd(req);
+            (void)wss_keep_alive_client_is_active(h, fd);
+        }
+    }
 
     free(buf);
     return ESP_OK;
@@ -233,8 +269,9 @@ static esp_err_t ws_handler(httpd_req_t *req)
 esp_err_t wss_open_fd(httpd_handle_t hd, int sockfd)
 {
     ESP_LOGI(TAG, "New client connected %d", sockfd);
-    wss_keep_alive_t h = (wss_keep_alive_t)httpd_get_global_user_ctx(hd);
-    return wss_keep_alive_add_client(h, sockfd);
+    // NICHT hier in Keep-Alive aufnehmen: open_fn wird auch für normale HTTP Requests aufgerufen.
+    // WS-Clients werden im WS-Handshake (ws_handler, HTTP_GET) registriert.
+    return ESP_OK;
 }
 
 void wss_close_fd(httpd_handle_t hd, int sockfd)
@@ -356,7 +393,7 @@ static esp_err_t favicon_handler(httpd_req_t *req) {
 static httpd_handle_t start_wss_echo_server(void)
 {
     wss_keep_alive_config_t keep_alive_config = KEEP_ALIVE_CONFIG_DEFAULT();
-    keep_alive_config.max_clients = max_clients;
+    keep_alive_config.max_clients = max_ws_clients;
     keep_alive_config.client_not_alive_cb = client_not_alive_cb;
     keep_alive_config.check_client_alive_cb = check_client_alive_cb;
     wss_keep_alive_t keep_alive = wss_keep_alive_start(&keep_alive_config);
@@ -364,7 +401,10 @@ static httpd_handle_t start_wss_echo_server(void)
     httpd_handle_t server = NULL;
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.server_port = 80;
-    config.max_open_sockets = max_clients;
+    config.max_open_sockets = max_open_sockets;
+    config.lru_purge_enable = true;
+    // Browser-Refresh-Spam: HTTP Keep-Alive aus -> Sockets werden schneller frei.
+    config.keep_alive_enable = false;
     
     config.global_user_ctx = keep_alive;
     config.open_fn = wss_open_fd;
@@ -423,8 +463,8 @@ void init_webserver(void) {
 
 void send_json_to_clients(httpd_handle_t server, const char *json_str) {
     if (server == NULL) return;
-    size_t clients = max_clients;
-    int client_fds[max_clients];
+    size_t clients = max_open_sockets;
+    int client_fds[max_open_sockets];
     if (httpd_get_client_list(server, &clients, client_fds) == ESP_OK) {
         for (size_t i = 0; i < clients; ++i) {
             int sock = client_fds[i];
