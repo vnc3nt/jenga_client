@@ -193,6 +193,27 @@ document.addEventListener('DOMContentLoaded', () => {
         counterValue.textContent = gameState.moves;
         decrementBtn.disabled = gameState.moves <= 0;
 
+        // NEU: Tower Fell Button Logic
+        if (towerFellBtn) {
+            let hasTimeRun = false;
+            // Toleranz: Zeit muss sich vom Startwert unterscheiden
+            if (gameState.mode === 'countdown') {
+                 // Check if time is effectively smaller than maxTime
+                 if (gameState.maxTime > 0 && gameState.time < gameState.maxTime) hasTimeRun = true;
+            } else { // countup
+                 if (gameState.time > 0) hasTimeRun = true;
+            }
+            
+            // Button deaktivieren, solange keine Zeit gelaufen ist.
+            // Ausnahme: Wenn Turm bereits gefallen ist (damit man es korrigieren kann),
+            // obwohl das theoretisch nicht passieren sollte, wenn logic strikt ist.
+            if (isTowerFell) {
+                 towerFellBtn.disabled = false;
+            } else {
+                 towerFellBtn.disabled = !hasTimeRun;
+            }
+        }
+
         if (modeToggle) {
             const shouldBeChecked = (gameState.mode === 'countup');
             if (modeToggle.checked !== shouldBeChecked) {
@@ -464,9 +485,20 @@ document.addEventListener('DOMContentLoaded', () => {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl = protocol + '//' + window.location.hostname + '/ws';
         
+        // Ensure only one socket is attempted at a time
+        if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
+             return;
+        }
+
         socket = new WebSocket(wsUrl);
         
-        socket.onopen = function() { console.log('WebSocket connected'); };
+        // Select Banner Element (Added dynamically in HTML via edit)
+        const banner = document.getElementById('connectionBanner');
+
+        socket.onopen = function() { 
+            console.log('WebSocket connected'); 
+            if (banner) banner.classList.remove('visible');
+        };
 
         socket.onmessage = function(event) {
             try {
@@ -513,7 +545,17 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (e) { console.error('Error parsing WS message', e); }
         };
 
-        socket.onclose = function() { setTimeout(initWebSocket, 2000); };
+        socket.onclose = function() { 
+            console.warn('WebSocket disconnected. Reconnecting in 2s...');
+            if (banner) banner.classList.add('visible');
+            setTimeout(initWebSocket, 2000); 
+        };
+        
+        socket.onerror = function(err) {
+            console.error('WebSocket error:', err);
+             // OnError usually precedes OnClose, so visible banner handled there or here
+             if (banner) banner.classList.add('visible');
+        };
     }
 
     async function sendCommand(command, value = null) {
