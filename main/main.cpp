@@ -23,8 +23,10 @@
 #include "global_vars.h"
 #include "nvs_flash.h"
 #include "nvs.h"
+#include "udp_sync.h"
 
 static const char *TAG = "MAIN"; // Tag für Logs
+SemaphoreHandle_t leaderboard_mutex = NULL; // Globale Definition
 
 // Pin Definitionen
 const gpio_num_t PAUSE_PIN = GPIO_NUM_42;
@@ -38,14 +40,7 @@ bool still_startup_holding = true;
 bool is_in_config_mode = false;
 
 // --- NEUE SPIEL VARIABLEN ---
-struct LeaderboardEntry {
-    char team_name[32];
-    int64_t time_ms;
-    int moves;
-    bool tower_fell;
-    uint32_t entry_id; // Unique ID (Random)
-    int64_t timestamp; // Zeitstempel (Uptime in ms bei Erstellung)
-};
+// LeaderboardEntry ist jetzt in global_vars.h definiert!
 
 std::vector<LeaderboardEntry> leaderboard_countdown;
 std::vector<LeaderboardEntry> leaderboard_countup;
@@ -320,6 +315,9 @@ void api_save_and_reset(const char* team_name, bool tower_fell) {
     }
 
     save_leaderboards_nvs(); // Leaderboard sofort speichern
+    // UDP Broadcast senden (für Sync mit anderen Geräten)
+    broadcast_leaderboard_udp();
+    
     api_reset_time();
 }
 
@@ -412,19 +410,23 @@ void broadcast_game_state() {
     cJSON *lbFuncArr = cJSON_CreateArray();
     const auto& currentLboard = (current_game_mode == MODE_A_COUNTDOWN) ? leaderboard_countdown : leaderboard_countup;
     
-    // Begrenzen auf Top 10 um Paketgröße klein zu halten
-    int count = 0;
-    for (const auto& entry : currentLboard) {
-        if (count >= 10) break;
-        cJSON *item = cJSON_CreateObject();
-        cJSON_AddStringToObject(item, "team", entry.team_name);
-        cJSON_AddNumberToObject(item, "time", (double)entry.time_ms);
-        cJSON_AddNumberToObject(item, "moves", entry.moves);
-        cJSON_AddBoolToObject(item, "fell", entry.tower_fell);
-        cJSON_AddNumberToObject(item, "id", entry.entry_id); // Unique ID
-        cJSON_AddNumberToObject(item, "ts", entry.timestamp); // Timestamp
-        cJSON_AddItemToArray(lbFuncArr, item);
-        count++;
+    // Mutex für Read Access
+    if (xSemaphoreTake(leaderboard_mutex, portMAX_DELAY)) {
+        // Begrenzen auf Top 10 um Paketgröße klein zu halten
+        int count = 0;
+        for (const auto& entry : currentLboard) {
+            if (count >= 10) break;
+            cJSON *item = cJSON_CreateObject();
+            cJSON_AddStringToObject(item, "team", entry.team_name);
+            cJSON_AddNumberToObject(item, "time", (double)entry.time_ms);
+            cJSON_AddNumberToObject(item, "moves", entry.moves);
+            cJSON_AddBoolToObject(item, "fell", entry.tower_fell);
+            cJSON_AddNumberToObject(item, "id", entry.entry_id); // Unique ID
+            cJSON_AddNumberToObject(item, "ts", (double)entry.timestamp); // Timestamp
+            cJSON_AddItemToArray(lbFuncArr, item);
+            count++;
+        }
+        xSemaphoreGive(leaderboard_mutex);
     }
     cJSON_AddItemToObject(root, "leaderboard", lbFuncArr);
 
@@ -482,6 +484,9 @@ extern "C" void app_main(void) {
     gpio_install_isr_service(0);
     initialize_gpios();
     
+    // Mutex initialisieren
+    leaderboard_mutex = xSemaphoreCreateMutex();
+    
     // Initialer LED Status (Pausiert -> LED AN)
     gpio_set_level(PAUSE_LED_PIN, 1);
 
@@ -510,6 +515,10 @@ extern "C" void app_main(void) {
         if (connect_saved_wifi()) {
             ESP_LOGI(TAG, "Erfolgreich verbunden! Starte Webserver...");
             init_webserver(); // Webserver starten!
+            init_udp_sync(); // UDP Listener starten
+            // Initialer Broadcast
+            vTaskDelay(pdMS_TO_TICKS(1000)); // Kurz warten bis Netz stabil
+            broadcast_leaderboard_udp();
         } else {
             ESP_LOGW(TAG, "Verbindung fehlgeschlagen. Starte Config Modus.");
             start_config_mode();

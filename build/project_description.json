@@ -1,7 +1,7 @@
 {
     "version":            "1.2",
     "project_name":       "jenga_client",
-    "project_version":    "fc2ab8c-dirty",
+    "project_version":    "7cce5c0-dirty",
     "project_path":       "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/jenga_client",
     "idf_path":           "/Users/vnc3nt/esp/esp-idf",
     "build_dir":          "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/jenga_client/build",
@@ -895,7 +895,7 @@
             "managed_reqs": [],
             "managed_priv_reqs": [ "espressif__mdns", "protocol_examples_common" ],
             "file": "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/jenga_client/build/esp-idf/main/libmain.a",
-            "sources": [ "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/jenga_client/main/main.cpp", "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/jenga_client/main/webserver.cpp", "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/jenga_client/main/keep_alive.cpp", "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/jenga_client/main/config_wifi.cpp", "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/jenga_client/build/config.html.S", "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/jenga_client/build/main.html.S", "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/jenga_client/build/style.css.S", "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/jenga_client/build/main.js.S", "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/jenga_client/build/config.js.S", "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/jenga_client/build/sun-moon.png.S" ],
+            "sources": [ "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/jenga_client/main/main.cpp", "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/jenga_client/main/webserver.cpp", "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/jenga_client/main/keep_alive.cpp", "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/jenga_client/main/config_wifi.cpp", "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/jenga_client/main/udp_sync.cpp", "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/jenga_client/build/config.html.S", "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/jenga_client/build/main.html.S", "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/jenga_client/build/style.css.S", "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/jenga_client/build/main.js.S", "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/jenga_client/build/config.js.S", "/Users/vnc3nt/Documents/Code/VS-Code/ESP32/jenga_client/build/sun-moon.png.S" ],
             "include_dirs": [ "." ]
         },
         "mbedtls": {
