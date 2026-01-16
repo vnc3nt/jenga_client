@@ -1165,3 +1165,5 @@
 105	128	1768579125071281000	/Users/vnc3nt/Documents/Code/VS-Code/ESP32/jenga_client/build/bootloader-prefix/src/bootloader-stamp/bootloader-done	26723813db8ba791
 82	144	1768579125025510375	esp-idf/main/CMakeFiles/__idf_main.dir/__/__/main.js.S.obj	f429bd6d8edc669d
 144	203	1768579125087353126	esp-idf/main/libmain.a	d983e1c2a6eb72ac
+203	2879	1768579127806595918	esp-idf/esp_system/ld/sections.ld	c7f9b9cb7ba89ddc
+203	2879	1768579127806595918	/Users/vnc3nt/Documents/Code/VS-Code/ESP32/jenga_client/build/esp-idf/esp_system/ld/sections.ld	c7f9b9cb7ba89ddc
