@@ -728,16 +728,22 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!banner) return;
 
         const diff = Date.now() - last_seen;
-        // Wenn mehr als 1s (1000ms) keine Nachricht kam -> Banner zeigen
-        if (diff > 1000) {
-            if (!banner.classList.contains('visible')) {
-                 banner.classList.add('visible');
-            }
+        const isSocketOpen = socket && socket.readyState === WebSocket.OPEN;
+        
+        if (!isSocketOpen || diff > 3000) {
+             // ROT: Verbindung verloren (> 3s oder Socket zu)
+             banner.textContent = "Verbindung verloren... Versuche Reconnect";
+             banner.classList.remove('unstable');
+             banner.classList.add('visible');
+        } else if (diff > 1000) {
+             // GELB: Verbindung instabil (> 1s)
+             banner.textContent = "Verbindung instabil...";
+             banner.classList.add('unstable');
+             banner.classList.add('visible');
         } else {
-            // Verbindung ist aktiv -> Banner ausblenden
-            if (banner.classList.contains('visible')) {
-                 banner.classList.remove('visible');
-            }
+            // ALLES OK
+            banner.classList.remove('visible');
+            banner.classList.remove('unstable');
         }
     }, 500);
 

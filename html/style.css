@@ -1061,3 +1061,8 @@ body.dark .time-separator {
 #connectionBanner.visible {
     transform: translateY(0);
 }
+
+#connectionBanner.unstable {
+    background-color: #f59e0b; /* Gelb/Orange */
+    color: black;
+}

@@ -150,9 +150,9 @@ struct async_resp_arg {
 };
 
 // WebSocket-Clients (Keep-Alive überwacht nur diese)
-static const size_t max_ws_clients = 4;
+static const size_t max_ws_clients = 3;
 // HTTPD-Sockets (Browser macht mehrere parallele HTTP Fetches + WS)
-static const size_t max_open_sockets = 16;
+static const size_t max_open_sockets = 7;
 
 // --- BROADCAST FUNKTION (Wird von main.cpp aufgerufen) ---
 void ws_broadcast(const char* str) {
@@ -516,7 +516,7 @@ static httpd_handle_t start_wss_echo_server(void)
     httpd_handle_t server = NULL;
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.server_port = 80;
-    config.max_open_sockets = 12; // Reduziert von 16 auf 12. Das zwingt den ESP, alte Sockets früher zu kicken.
+    config.max_open_sockets = 7; // Set to 7 (default) to allow 3 clients + overhead, but trigger purge sooner.
     config.lru_purge_enable = true;
     // Browser-Refresh-Spam: HTTP Keep-Alive aus -> Sockets werden schneller frei.
     config.keep_alive_enable = false;
