@@ -543,6 +543,9 @@ void broadcast_game_state() {
     
     // NEU: Team Name Info (damit Client weiß, ob ESP bereit ist)
     cJSON_AddStringToObject(root, "current_team", current_team_name);
+
+    // NEU: Server Timestamp für Heartbeat / Connection Check
+    cJSON_AddNumberToObject(root, "server_timestamp", (double)(esp_timer_get_time() / 1000));
     
     // 1. Modus
     cJSON_AddNumberToObject(root, "mode", (int)current_game_mode);

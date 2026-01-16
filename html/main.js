@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     
     // --- STATE ---
+    let last_seen = Date.now(); // NEU: Für Connection Watchdog
     let gameState = {
         time: 0,
         maxTime: 0,
@@ -501,6 +502,12 @@ document.addEventListener('DOMContentLoaded', () => {
         socket.onmessage = function(event) {
             try {
                 const data = JSON.parse(event.data);
+                
+                // NEU: Heartbeat Logic
+                if (typeof data.server_timestamp !== 'undefined') {
+                    last_seen = Date.now();
+                }
+
                 if (typeof data.mode !== 'undefined') gameState.mode = (data.mode === 1) ? 'countup' : 'countdown';
                 
                 let receivedTime = (gameState.mode === 'countdown') ? data.time_countdown : data.time_countup;
@@ -714,6 +721,26 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- INITIALIZATION ---
+
+    // NEU: Connection Watchdog (alle 500ms prüfen)
+    setInterval(() => {
+        const banner = document.getElementById('connectionBanner');
+        if (!banner) return;
+
+        const diff = Date.now() - last_seen;
+        // Wenn mehr als 1s (1000ms) keine Nachricht kam -> Banner zeigen
+        if (diff > 1000) {
+            if (!banner.classList.contains('visible')) {
+                 banner.classList.add('visible');
+            }
+        } else {
+            // Verbindung ist aktiv -> Banner ausblenden
+            if (banner.classList.contains('visible')) {
+                 banner.classList.remove('visible');
+            }
+        }
+    }, 500);
+
     updateUI();
     initWebSocket();
 });
